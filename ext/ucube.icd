@@ -1,0 +1,12 @@
+*Input File:ucube.ine   (   5  x    4)
+*Incidences of output(=vertices/rays) and input (=hyperplanes)
+*   for each output, #incidence and the set of hyperplanes containing it
+*   or its complement with its cardinality with minus sign
+begin
+       5    5    6
+      -1    5
+       3    3    4    5
+       3    1    4    5
+       3    2    3    5
+       3    1    2    5
+end

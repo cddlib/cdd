@@ -1,0 +1,40 @@
+* cdd: Double Description Method C-Code:Version C 0.23 (November 22, 1993)
+* Copyright 1993, Komei Fukuda, EPFL, Switzerland  fukuda@dma.epfl.ch
+Input File:reg24-5.ine   (  24  x    5)
+HyperplaneOrder: LexMin
+AdjacencyTest: Combinatorial
+Degeneracy preknowledge for computation: None (possible degeneracy)
+Computation starts     at Tue Nov 23 15:08:53 1993
+            terminates at Tue Nov 23 15:08:53 1993
+Total processor time = 0 seconds
+                     = 0 hour 0 min 0 sec
+Hull computation is chosen, and the output is an inequality system
+FINAL RESULT:
+Number of Facets =      24
+begin
+       24      5    real
+  2  0  1  1  0
+  2  1  0  1  0
+  2  1  1  0  0
+  2  1  0  0  1
+  2  0  1  0  1
+  2  0  1  0 -1
+  2  1  0  0 -1
+  2  1  0 -1  0
+  2  0  1 -1  0
+  2  0  0  1  1
+  2  0  0  1 -1
+  2  1 -1  0  0
+  2  0 -1  1  0
+  2  0  0 -1  1
+  2  0 -1  0  1
+  2  0 -1  0 -1
+  2  0  0 -1 -1
+  2  0 -1 -1  0
+  2 -1  1  0  0
+  2 -1  0  1  0
+  2 -1  0  0  1
+  2 -1  0  0 -1
+  2 -1  0 -1  0
+  2 -1 -1  0  0
+end

@@ -1,0 +1,12 @@
+Incidences of output(=vertices/rays) and input (=hyperplanes)
+Input File:ex1.ine          (   4  x    3)
+- for each output, #incidence and the set of hyperplanes containing it
+   or its complement with its cardinality with minus sign
+begin
+       5    4    5
+       2  3  4
+       2  2  3
+       2  2  5
+       2  1  4
+       2  1  5
+end

@@ -1,0 +1,19 @@
+*Input File:ccc4.ine   (   7  x    7)
+*Incidences of output(=facets) and input (=points)
+*   for each output, #incidence and the set of points lying on it
+*   or its complement with its cardinality with minus sign
+begin
+      12    7    7
+      -2    1    4
+      -2    1    3
+      -2    1    2
+      -2    4    5
+      -2    3    5
+      -2    2    5
+      -2    4    6
+      -2    3    6
+      -2    2    6
+      -2    4    7
+      -2    3    7
+      -2    2    7
+end

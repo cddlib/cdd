@@ -1,0 +1,33 @@
+* cdd: Double Description Method C-Code:Version C0.27 (December 8, 1993)
+* Copyright (C) 1993, Komei Fukuda, fukuda@dma.epfl.ch
+*Input File:ccp4.ine   (   8  x    7)
+*HyperplaneOrder: LexMin
+*AdjacencyTest: Combinatorial
+*Degeneracy preknowledge for computation: None (possible degeneracy)
+*Hull computation is chosen.
+*Computation starts     at Mon Dec 13 14:41:04 1993
+*            terminates at Mon Dec 13 14:41:05 1993
+*Total processor time = 1 seconds
+*                     = 0 hour 0 min 1 sec
+*Since hull computation is chosen, the output is a minimal inequality system
+*FINAL RESULT:
+*Number of Facets =      16
+begin
+       16      7    real
+  2  0  0  0 -1 -1 -1
+  0  1  1  0 -1  0  0
+  0  1  0  1  0 -1  0
+  0  0  1  1  0  0 -1
+  2 -1 -1  0 -1  0  0
+  0  0  0  0 -1  1  1
+  0  0 -1  1  0  0  1
+  0 -1  0  1  0  1  0
+  2 -1  0 -1  0 -1  0
+  0  0  1 -1  0  0  1
+  0  0  0  0  1 -1  1
+  0 -1  1  0  1  0  0
+  2  0 -1 -1  0  0 -1
+  0  1  0 -1  0  1  0
+  0  1 -1  0  1  0  0
+  0  0  0  0  1  1 -1
+end

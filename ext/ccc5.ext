@@ -1,0 +1,57 @@
+* cdd: Double Description Method C-Code:Version C0.27 (December 8, 1993)
+* Copyright (C) 1993, Komei Fukuda, fukuda@dma.epfl.ch
+*Input File:ccc5.ine   (  15  x   11)
+*HyperplaneOrder: LexMin
+*AdjacencyTest: Combinatorial
+*Degeneracy preknowledge for computation: None (possible degeneracy)
+*Hull computation is chosen.
+*Computation starts     at Mon Dec 13 14:40:15 1993
+*            terminates at Mon Dec 13 14:40:15 1993
+*Total processor time = 0 seconds
+*                     = 0 hour 0 min 0 sec
+*Since hull computation is chosen, the output is a minimal inequality system
+*FINAL RESULT:
+*Number of Facets =      40
+begin
+       40     11    real
+  0  1  1  0  0 -1  0  0  0  0  0
+  0  1  0  1  0  0 -1  0  0  0  0
+  0  1  0  0  1  0  0 -1  0  0  0
+  0  0  1  1  0  0  0  0 -1  0  0
+  0  0  1  0  1  0  0  0  0 -1  0
+  0  0  0  1  1  0  0  0  0  0 -1
+  0  0  0  0  0  0  0  0  1 -1  1
+  0  0  0  1 -1  0  0  0  0  0  1
+  0  0  0  0  0  0  1 -1  0  0  1
+  0  0  0  0  0  0 -1  1  0  0  1
+  0  0  0 -1  1  0  0  0  0  0  1
+  0  0  0  0  0  0  0  0 -1  1  1
+  0  0  0  0  0  0  1  1  0  0 -1
+  0  1  0  0 -1  0  0  1  0  0  0
+  0  0  0  0  0  1  0  1  0 -1  0
+  0  1  1  1 -1 -1 -1  1 -1  1  1
+  0  0  0  0  0  0  0  0  1  1 -1
+  0  0  1  0 -1  0  0  0  0  1  0
+  0  0  0  0  0  1  0 -1  0  1  0
+  0  0  0  0  0 -1  0  1  0  1  0
+  0  0 -1  0  1  0  0  0  0  1  0
+  0 -1  0  0  1  0  0  1  0  0  0
+  0  1 -1  1  1  1 -1 -1  1  1 -1
+  0 -1  1  1  1  1  1  1 -1 -1 -1
+  0  1  0 -1  0  0  1  0  0  0  0
+  0  1 -1  0  0  1  0  0  0  0  0
+  0  0  0  0  0  1  1  0 -1  0  0
+  0  1  1 -1  1 -1  1 -1  1 -1  1
+  0  0  1 -1  0  0  0  0  1  0  0
+  0  0  0  0  0  1 -1  0  1  0  0
+  0 -1  1  0  0  1  0  0  0  0  0
+  0  0  0  0  0 -1  1  0  1  0  0
+  0  0 -1  1  0  0  0  0  1  0  0
+  0 -1  0  1  0  0  1  0  0  0  0
+  0 -1 -1  1  1 -1  1  1  1  1 -1
+  0 -1  1 -1  1  1 -1  1  1 -1  1
+  0  1 -1 -1  1  1  1 -1 -1  1  1
+  0 -1  1  1 -1  1  1 -1 -1  1  1
+  0  1 -1  1 -1  1 -1  1  1 -1  1
+  0  1  1 -1 -1 -1  1  1  1  1 -1
+end

@@ -1,0 +1,20 @@
+* cdd: Double Description Method C-Code:Version C0.27 (December 8, 1993)
+* Copyright (C) 1993, Komei Fukuda, fukuda@dma.epfl.ch
+*Input File:ucube.ine   (   5  x    4)
+*HyperplaneOrder: LexMin
+*AdjacencyTest: Combinatorial
+*Degeneracy preknowledge for computation: None (possible degeneracy)
+*Computation starts     at Mon Dec 13 14:46:18 1993
+*            terminates at Mon Dec 13 14:46:18 1993
+*Total processor time = 0 seconds
+*                     = 0 hour 0 min 0 sec
+*FINAL RESULT:
+*Number of Vertices =       4,   Rays =       1
+begin
+        5      4    real
+  0  0  0  1
+  1  1  1  1
+  1  2  1  1
+  1  1  2  1
+  1  2  2  1
+end

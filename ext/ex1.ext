@@ -1,0 +1,17 @@
+* pdd: Double Description Method Code:Version 0.2 (November 5, 1993)
+* Copyright 1993, Komei Fukuda, EPFL, Switzerland  fukuda@dma.epfl.ch
+Input File:ex1.ine          (   4  x    3)
+HyperplaneOrder: LexMin
+AdjacencyTest: Combinatorial
+Computation starts     at 93/11/08   10:00:09  
+            terminates at 93/11/08   10:00:09  
+FINAL RESULT:
+ Number of Vertices =       3,   Rays =       2
+begin
+        5      3    real
+  1 -1  4
+  1  0  3
+  0  2  1
+  1 -1 10
+  0  1  2
+end
