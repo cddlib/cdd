@@ -1,6 +1,6 @@
 /* cdd.c: Main program of the sofware cdd
    written by Komei Fukuda, fukuda@ifor.math.ethz.ch
-   Version 0.61b, November 29, 1997
+   Version 0.61, December 1, 1997
    Standard ftp site: ftp.ifor.math.ethz.ch, Directory: pub/fukuda/cdd
 */
 

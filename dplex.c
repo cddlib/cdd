@@ -1,6 +1,6 @@
 /* dplex.c:  dual simplex method c-code
    written by Komei Fukuda, fukuda@ifor.math.ethz.ch
-   Version 0.61alpha, October 31, 1997
+   Version 0.61, December 1, 1997
 */
 
 /* dplex.c : C-Implementation of the dual simplex method for
@@ -19,7 +19,7 @@
 #include <string.h>
 
 #define COPYRIGHT   "Copyright (C) 1997, Komei Fukuda, fukuda@ifor.math.ethz.ch"
-#define DPLEXVERSION   "Version 0.61 (September 8, 1997)"
+#define DPLEXVERSION   "Version 0.61 (December 1, 1997)"
 
 #define dp_FALSE 0
 #define dp_TRUE 1

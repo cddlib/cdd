@@ -1,4 +1,4 @@
-cdd & cdd+ HISTORY file    (as of December 1, 1997)
+cdd & cdd+ HISTORY file    (as of December 10, 1997)
 
 *** cdd version (date) / changes ***
 
@@ -221,6 +221,9 @@ Version 0.61 (December 1, 1997) /
    which are added to a Polyhedra format (1997).
    dp_FindInteriorPoint is added to dplex.  Some small bugs are
    fixed in dplex.
+
+Version 0.61a (December 10, 1997) /
+   Practically the same as 0.61.  Wrong dates written in the source are fixed.
 
 *** cdd+ version (date) / changes ***
 

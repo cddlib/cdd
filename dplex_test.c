@@ -1,7 +1,7 @@
 /* dplex_test.c: Main test program to call the dplex library
    written by Komei Fukuda, fukuda@ifor.math.ethz.ch
-   Version 0.61alpha, October 31, 1997
-   Standard ftp site: ifor13.ethz.ch(129.132.154.13), Directory: pub/fukuda/cdd
+   Version 0.61, December 1, 1997
+   Standard ftp site: ftp.ifor.math.ethz.ch, Directory: pub/fukuda/cdd
 */
 
 /*  This program is free software; you can redistribute it and/or modify

@@ -1,6 +1,6 @@
  /* cdd.h: Header file for cdd.c 
    written by Komei Fukuda, fukuda@ifor.math.ethz.ch
-   Version 0.61b, November 29, 1997
+   Version 0.61, December 1, 1997
 */
 
 /* cdd.c : C-Implementation of the double description method for
@@ -11,7 +11,7 @@
 */
 
 #define COPYRIGHT   "Copyright (C) 1996, Komei Fukuda, fukuda@ifor.math.ethz.ch"
-#define DDVERSION   "Version 0.61b (November 29, 1997)"
+#define DDVERSION   "Version 0.61 (December 1, 1997)"
 #include <time.h>
 #include "dplex.h"
 #include "dplexdef.h"
