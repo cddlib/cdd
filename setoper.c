@@ -3,10 +3,24 @@
  * created by Komei Fukuda, Nov.14, 1993
  * modified on December 5, 1994 
    (set_card function replaced with a better code by David Bremner) 
- * last modified on March 16, 1995 
+ * last modified on August 18, 1996
  */
-
+ 
 #include "setoper.h"
+
+#include <limits.h>
+#define SETBITS (sizeof(long) * CHAR_BIT)
+/* (Number of chars in a long) * (number of bits in a char) */
+
+/* Definitions for optimized set_card function 
+   by David Bremner bremner@cs.mcgill.ca  
+*/
+
+/* Caution!!!
+   Bremner's technique depends on the assumption that CHAR_BIT == 8.
+*/
+
+#define LUTBLOCKS(set) (((set[0]-1)/SETBITS+1)*(sizeof(long)/sizeof(set_card_lut_t)))
 
 static unsigned char set_card_lut[]={
 0,1,1,2,1,2,2,3,1,2,2,3,2,3,3,4,1,2,2,3,2,3,3,4,2,3,3,4,3,4,4,5,
@@ -19,11 +33,11 @@ static unsigned char set_card_lut[]={
 3,4,4,5,4,5,5,6,4,5,5,6,5,6,6,7,4,5,5,6,5,6,6,7,5,6,6,7,6,7,7,8};
 /* End of Definitions for optimized set_card */
 
-long set_blocks(long len)
+unsigned long set_blocks(long len)
 {
-	long blocks;
+	long blocks=1L;
 	
-	blocks=(len-1)/SETBITS+2;
+	if (len>0) blocks=((long)len-1)/SETBITS+2;
 	return blocks;
 }
 
@@ -33,10 +47,10 @@ void set_initialize(set_type *setp, long len)
 	long i,forlim1;
 	
 	forlim1=set_blocks(len);
-	*setp=(long *) calloc(forlim1, sizeof i);
-	(*setp)[0]=len;  /* size of the ground set */
+	*setp=(unsigned long *) calloc(forlim1, sizeof i);
+	(*setp)[0]=(unsigned long) len;  /* size of the ground set */
 	for (i=1; i<forlim1; i++)
-		(*setp)[i]=0;
+		(*setp)[i]=0U;
 }
 
 void set_free(set_type set)
@@ -52,7 +66,7 @@ void set_emptyset(set_type set)
 	
 	forlim=set_blocks(set[0])-1;
 	for (i=1; i<=forlim; i++)
-		set[i]=0;
+		set[i]=0U;
 }
 
 
@@ -70,8 +84,8 @@ void set_addelem(set_type set, long elem)
 /* add elem only if it is within the set[] range */
 {
 	long i,j;
-	long change;
-	long one=1;
+	unsigned long change;
+	unsigned long one=1U;
 	
 	if (elem<=set[0])    
 	{
@@ -86,8 +100,8 @@ void set_delelem(set_type set, long elem)
 /* delete elem only if it is within the set[] range */
 {
 	long  i,j;
-	long change;
-	long one=1;	 
+	unsigned long change;
+	unsigned long one=1U;	 
 	
 	if (elem<=set[0])
 	{
@@ -156,8 +170,8 @@ int set_member(long elem, set_type set)
 {
 	int  yes=0;
 	long  i,j;
-	long testset;
-	long one=1;	 
+	unsigned long testset;
+	unsigned long one=1U;	 
 	
 	if (elem<=set[0])
 	{
@@ -174,7 +188,8 @@ long set_card(set_type set)
 /* set cardinality, modified by David Bremner bremner@cs.mcgill.ca
    to optimize for speed. */
 {
-  long block,car=0;
+  unsigned long block;
+  long car=0;
   set_card_lut_t *p;
   
   p=(set_card_lut_t *)&set[1];
@@ -224,7 +239,7 @@ void set_binwrite(set_type set)
 {
 	int i,j;
 	long forlim;
-	long e1,e2;
+	unsigned long e1,e2;
 	
 	printf("max element = %ld,\n",set[0]);
 	forlim=set_blocks(set[0])-1;
@@ -262,7 +277,7 @@ void set_fbinwrite(FILE *f,set_type set)
 			e1=e2-(e1<<j);
 			e2=e1;
 		}
-		printf(" ");
+		fprintf(f," ");
 	}
 	fprintf(f,"\n");
 }

@@ -1,7 +1,7 @@
 % The name of this file: cddman.tex
 % written by by Komei Fukuda
 % December 14, 1993
-% Revised August 7, 1995
+% Revised August  27, 1996
 %
 \documentstyle[11pt]{article}
 \renewcommand{\baselinestretch}{1.0}
@@ -35,9 +35,9 @@
 }
 
 \vspace{20mm}
-{\Large (cdd Version 0.56,  August 7, 1995)}
+{\Large (cdd Version 0.60,  August 21, 1996)}
 
-{\Large (Manual  Version  August 7, 1995)}
+{\Large (Manual  Version  August 27, 1996)}
 
 \end{center}
 
@@ -56,9 +56,29 @@
    University of Tsukuba, Tokyo, Japan}
 
 \bigskip
-{\large (cdd Version 0.56,  August 7, 1995)}
+{\large (cdd Version 0.60,  August 21, 1996)}
 
 \end{center}
+
+\section{What's new?}
+If you are a new user of cdd please read Section \ref{INTRODUCTION} (Introduction) first.
+The version 0.60 has two improvements that are parallel to
+those made for the version 074 of cdd+.  
+\begin{description}
+\item[(1)] The first one, which is not an additional
+function, is some changes in default output file names.  In particular, each different
+function (transformation) generates a file whose name extension
+ represents the transformation, see Section~\ref{HOWTO}.
+\item[(2)] Linear programming codes have been updated and now
+they are independent from cdd programs.  This change makes
+the cdd programs more readable (less global variables), and
+in addition anyone can simply use the LP code (called dplex) from
+a user's code.  A sample main code to use dplex, dplex\_test.c,
+is also included in the distribution.
+The default algorithm is no more the criss-cross method but
+ the dual simplex method which works much more efficiently for dense LP's 
+with many constraints and few variables.
+\end{description}
 
 \section{Introduction} \label{INTRODUCTION}
 
@@ -85,7 +105,7 @@ $P = conv(v_1,\ldots,v_n) +  nonneg(r_1,\ldots,r_s)$.
 As we see in this manual, the computation can be done
 in straightforward manner.  There is one assumption for the input
 for hull computation: the polyhedron must be full-dimensional.
-See the ^^ ^^ hull" option in Section~\ref{OPTIONS}.
+See the ``hull" option in Section~\ref{OPTIONS}.
 
 The program cdd has been produced
 from the pascal code pdd.p (Version 0.2)
@@ -222,14 +242,14 @@ polyhedron given by
    P = \{ x  \in R^3:
     1\le x_1 \le 2, \; 1 \le x_2 \le 2, \; 1 \le x_3\},
 \]
-which is a 3-cube without one ^^ ^^ lid". For finding all
+which is a 3-cube without one ``lid". For finding all
 vertices and extreme rays, the input file for cdd is
 
 \begin{verbatim}
 file name: ucube.ine
 3 cube without one "lid"
 begin
-        5      4    integer
+    5      4    integer
   2   -1   0   0
   2    0  -1   0
  -1    1   0   0
@@ -240,22 +260,22 @@ incidence
 adjacency
 \end{verbatim}
 
-The meaning of options ^^ ^^ incidence" and ^^ ^^ adjacency" 
+The meaning of options ``incidence" and ``adjacency" 
 will be explained in Section~\ref{OPTIONS}.
 After you run cdd with this input file, you will get
 an output file, say ucube.ext, which looks like:
 
 \begin{verbatim}
-* cdd: Double Description Method C-Code:Version C0.56 (August 7, 1995)
-* Copyright (C) 1995, Komei Fukuda, fukuda@ifor.math.ethz.ch
+* cdd: Double Description Method C-Code:Version 0.60 (August 21, 1996)
+* Copyright (C) 1996, Komei Fukuda, fukuda@ifor.math.ethz.ch
 *Input File:ucube.ine   (   5  x    4)
 *HyperplaneOrder: LexMin
 *Degeneracy preknowledge for computation: None (possible degeneracy)
 *Vertex/Ray enumeration is chosen.
-*Computation starts     at Mon Aug  7 18:34:43 1995
-*            terminates at Mon Aug  7 18:34:44 1995
-*Total processor time = 1 seconds
-*                     = 0 hour 0 min 1 sec
+*Computation starts     at Tue Aug 27 14:34:39 1996
+*            terminates at Tue Aug 27 14:34:39 1996
+*Total processor time = 0 seconds
+*                     = 0 hour 0 min 0 sec
 *FINAL RESULT:
 *Number of Vertices =       4,   Rays =       1
 begin
@@ -276,7 +296,7 @@ information on the name of input file, and the options
 chosen to run the program which will be explained in
 the next section.  
 
-Finally the ^^ ^^ hull" option is  set for
+Finally the ``hull" option is  set for
 the output file so that if you run cdd with this output file,
 cdd will perform the convex hull operation to recover 
 essentially the original input inequality system.  Note that
@@ -287,7 +307,7 @@ at least one vertex.
 \section{Options}  \label{OPTIONS}
 
 The following options are available for cdd.  These options are
-set if they appear in input file after the ^^ ^^ end" command.
+set if they appear in input file after the ``end" command.
 Independent options can be set simultaneously, but each option
 must be written separately in one line, and  two options
 should not be written in one line.  When two or more non-independent
@@ -300,7 +320,7 @@ When this option is chosen, the program cdd
 will do the reverse operation.   That is, the input is assumed to
 be a set of points and directions (rays).  When this option is set,
 it is required that each data line must start with 
-either ^^ ^^ 1" or ^^ ^^ 0", meaning points and rays, respectively.
+either ``1" or ``0", meaning points and rays, respectively.
 More specifically, if the input file is of form
 
 \begin{tabular}{ccl}
@@ -322,12 +342,14 @@ More specifically, if the input file is of form
 Then the input is interpreted as the polyhedron in $R^d$:\\
 $P = conv(v_1,\ldots,v_n) +  nonneg(r_1,\ldots,r_s)$ 
 and the output will be a minimal system of linear inequalities
-to represent $P$. 
+to represent $P$.   It is stronly suggested to use the extension
+``.ext'' for hull computation input files, and never use ``.ine'' to
+avoid confusion.
 
 \item[verify\_input] option\\
 When this option is chosen, the program will
 output the input problem as cdd interpreted.  
-The default output  file is ^^ ^^ *.solved". 
+The default output  file is ``*.solved". 
 This option helps user to verify what problem
 is actually solved.  The default for this option is off.
 See the sample files verifyinput1.ine and verifyinput2.ine
@@ -357,7 +379,7 @@ in a separate file (*.icd).  Here, a vertex is said to be
 An extreme ray $r$ is said to be {\em incident with\/} 
 an inequality $a^T \; x \le b$ if  $a^T \; r = 0$.  For example,
 since the incidence option was set for the example input file ucube.ine in
-the previous section, the program outputs the following ucube.icd file:
+the previous section, the program outputs the following ucube.ecd file:
 \begin{verbatim}
 *Incidences of output(=vertices/rays) and input (=hyperplanes)
 *   for each output, #incidence and the set of hyperplanes containing it
@@ -366,14 +388,14 @@ the previous section, the program outputs the following ucube.icd file:
 *cdd output file: ucube.ext
 begin
        5    5    6
- 3 :  1 4 5
- 3 :  3 4 5
- 3 :  2 3 5
- 3 :  1 2 5
- -1 :  5
+ 3 : 1 4 5 
+ 3 : 3 4 5 
+ 3 : 2 3 5 
+ 3 : 1 2 5 
+ -1 : 5 
 end
 \end{verbatim}
-After ^^ ^^ begin", there are three numbers $5 \quad 5 \quad 6$.
+After ``begin", there are three numbers $5 \quad 5 \quad 6$.
 The first number $5$ is a number of output (vertices and rays).
 The next number $5$ is $m$, the number of inequalities in the input file.
 The last number $6$ is usually $m+1$, and $m$ if the input linear inequality
@@ -406,7 +428,7 @@ very important information.
 
 Notice that the format of incidence file has been slightly changed.
 Up to the version 0.55 (and up to version 0.72 of cdd+), 
-cdd (cdd+) did not output a colon ^^ ^^ :" after
+cdd (cdd+) did not output a colon ``:" after
 the cardinality of incidence.  This change is to make the incidence
 file more readable.  We shall try not to change this new output format.
 
@@ -427,8 +449,8 @@ The default is this option being off.
 \item[adjacency] option\\
 This option can be used when you want to output the adjacency of output.
 When the output is the list of vertices and rays, the program will
-output the adjacency list.  For the example input ^^ ^^ ucube.ine",
-the following extra file, say ^^ ^^ ucube.adj", will be created:
+output the adjacency list.  For the example input ``ucube.ine",
+the following extra file, say ``ucube.ead", will be created:
 \begin{verbatim}
 *Adjacency List of output (=vertices/rays)
 *cdd input file : ucube.ine   (   5  x    4)
@@ -451,6 +473,7 @@ ucube.ext file has degree (valency) $3$, and its three neighbours are
 
 When the computation is to obtain the hull (inequality system),
 the adjacency is of course that of inequalities (i.e. facets).
+The extension of this output file is ``.iad".
 
 \item[lexmin, lexmax, minindex,mincutoff, maxcutoff, mixcutoff, random] options\\
 The double description is an incremental algorithm which
@@ -521,11 +544,15 @@ over the input polyhedron $P$. The grammer is simply
 
 The minimize option works exactly same way for minimization of
 a linear objective function.
-See the sample input file ^^ ^^ lptest.ine".  The program cdd
+See the sample input file ``lptest.ine".  The program cdd
 will output both primal and dual optimal solutions  if the LP
 is solvable.  If the LP is infeasible (dual infeasible), then
 it will output an evidence.  Currently these options are
 not supported for homogeneous input (i.e. zero righthand side case).
+
+The default algorithm is the dual simplex method.  The option
+``criss-cross'' will select the criss-cross method which is usually
+less efficient than the dual simplex method.
 
 \item[find\_interior] option\\
 When this option is set, the program solves the linear program: 
@@ -615,13 +642,29 @@ The simplest way is just to run the program with
 \begin{verbatim}
   % cdd test.ine
 \end{verbatim}
-and then the program will open necessary output files with
-default file names, and output the requested results.
-The default names are {\em test.ext\/}, {\em test.solved\/}, {\em test.icd\/}, {\em test.adj\/},
-{\em testsub.ine\/} for the extreme points/ray file, 
-the input verification file, the incidence
-file, the adjacency file and the preprojection variable sub-inequality
-system, respectively.  If you want to specify the output file names
+Then the program will open necessary output files with
+default file names as shown in Table~\ref{FIG:files} 
+and output the requested results.
+
+\begin{table}[ht] 
+\begin{center}
+\begin{tabular}{|l||l|l|}   \hline
+                       &  \multicolumn{2}{c|} {Input File Format }\\
+options         &   \multicolumn{1}{c|}  {H-format (*.ine)} & \multicolumn{1}{c|}  {V-format (*.ext)} \\ \hline
+conversion             &  *.ext   & *.ine  \\
+incidence                &  *.ecd  &  *.icd \\
+adjacency   &  *.ead  &  *.iad \\
+maximize/minimize   &  *.lps  &  non applicable \\
+verify\_input    & *.solved &   *.solved \\
+preprojection  &  *sub.ine  &  non applicable \\
+                          &  and *.ext  &                              \\ \hline
+\end{tabular}
+\end{center}
+\caption{Default  extensions for output files} 
+\label{FIG:files}
+\end{table}
+
+If you want to specify the output file names
 different from default, simply run the program by
 \begin{verbatim}
   % cdd
@@ -629,7 +672,7 @@ different from default, simply run the program by
 and input desired file names at each of file name requests.
 Even after you run cdd this way, one can 
 change to the automatic mode by inputing the input file 
-name with additional semicolon, e.g. ^^ ^^ test.ine;".
+name with additional semicolon, e.g. ``test.ine;".
 
 \section{Source Files and Compilation}  \label{CAUTIONS}
 
@@ -641,48 +684,55 @@ name with additional semicolon, e.g. ^^ ^^ test.ine;".
      cdd.c       &   C main source file\\
      cddarith.c  &   C sub source file\\  
      cddio.c  &   C sub source file\\  
-     cdd.h       &   The header file for cdd.c\\
+     cdd.h       &   header file for cdd.c\\
      cdddef.h    &   cdd definition file (whose two lines are to be edited by user)\\
+      dplex.c      &  dual simplex library\\
+     dplex.h       & header file for dplex\\
+     dplexdef.h    & additional header file for dplex\\
+     dplex\_test.c  & sample main program for dplex\\
      setoper.c   &   C library for set operation\\
-     setoper.h   &   The header file for setoper.c \\
+     setoper.h   &   header file for setoper.c \\
      cddman.tex  &  Latex source of this manual itself\\
+     Makefile &   GNU make file\\
      cddHISTORY  &   brief description of changes made at each updates\\
-     ine         &   A subdirectory containing sample input files\\
-     ext         &   A subdirectory containing sample output files\\
+     ine         &   A subdirectory containing sample inequality files\\
+     ext         &   A subdirectory containing sample points files for hull computation\\
      COPYING     &   GNU GENERAL PUBLIC LICENSE
 \end{tabular}
 
 \noindent
-To compile the code in a standard unix environment, type
+To compile the code in a standard unix environment (with GNU gcc compiler), type
 \begin{verbatim}
-  gcc -O cdd.c cddarith.c cddio.c setoper.c
+  make all
 \end{verbatim}
-
-to obtain an optimized executable file a.out. The GNU compiler
-gcc can be replaced by cc, if aother ANSI  C compiler cc is available.
+to obtain an optimized executable file cdd and dplex\_test.  If this does not work,
+modify the file, Makefile. The GNU compiler gcc can be replaced by cc, 
+if aother ANSI  C compiler cc is available.
 Since the program includes some standard ANSI library 
 headers such as stdlib.h and time.h at compilation, 
 the compiler must know the locations of the standard ANSI libraries.
-Also, the files cdd.c, cdd.h, cdddef.h, cddarith.c, cddio.c setoper.c and 
-setoper.h are supposed to be
+Also, the files cdd.c, cdd.h, cdddef.h, cddarith.c, cddio.c, dplex.c, dplexdef.h,
+dplex.h, setoper.c and  setoper.h are supposed to be
 in the current directory.
 
-\item[(2)] [Recompilation] The first two constants in the program cdddef.h are to be 
+\item[(2)] [Recompilation] The first two constants in the program dplexdef.h are to be 
 changed by the user if necessary, and the program must be recompiled
 each time after any change is made.   These constants are simply
 to specify the largest size of acceptable input data $(b, -A)$: 
 \begin{verbatim}
-#define MMAX    5001  /* USER'S CHOICE: max row size of A plus one */
-#define NMAX    101   /* USER'S CHOICE: max column size of A plus one */
+#define dp_MMAX    5002  /* USER'S CHOICE: max row size of A plus two */
+#define dp_NMAX    101   /* USER'S CHOICE: max column size of A plus one */
 \end{verbatim}
 If this input data has $m$ rows and $d+1$ columns, then in the program,
-MMAX should be at least $m+1$ and NMAX should be at least
-$d+1$.  Although it has no sense to set the sizes MMAX and NMAX much larger
-than necessary, the program only creates spaces for MMAX+NMAX pointers
+dp\_MMAX should be at least $m+1$ and dp\_NMAX should be at least
+$d+1$.  Although it has no sense to set the sizes 
+dp\_MMAX and dp\_NMAX much larger
+than necessary, the program only creates spaces 
+for dp\_MMAX+dp\_NMAX pointers
 and uses only necessary storage space for each input, and
-thus large MMAX and NMAX won't be too harmful.
+thus large dp\_MMAX and dp\_NMAX won't be too harmful.
 
-Unlike the pascal version pdd, one can set the size MMAX as large as one
+Unlike the pascal version pdd, one can set the size dp\_MMAX as large as one
 wants.  It is no more restricted by the SET TYPE element sizes of 
 usual Pascal compilers.
 
@@ -691,7 +741,8 @@ ANSI C, and thus it should run on
 personal computers without any changes if one uses a compliler supporting
 ANSI standard. I have been using  THINK C without
 any problems if ANSI library is added to the project together with
-cdd.c, cddarith.c, cddio.c and setoper.c.  I could also compile it with some
+cdd.c, cddarith.c, cddio.c, dplex.c and setoper.c.  
+I could also compile it with some
 old version of TURBO C.  Due to limited memory capacities of
 these compilers, it is perhaps necessary to reduce the constants MMAX and NMAX
 to, say 2001 and 51.
@@ -775,37 +826,36 @@ provided me with an ideal opportunity to visit the department
 for the academic year 1993-1994.  Without his 
 generous help and encouragement,
 the present form of this software would not have existed.
-Also I am indebted to Dr. Alain Prodon (EPFL) and Dr. Francois Margot
-(Carnegie Mellon Univ.) who used earlier versions of the program extensively,
-found several bugs, and  gave me very helpful suggestions.
-I am thankful to Dr. Henry Crapo of INRIA, France for
-his precious advise on the input and output style of Polyhedra format.
-I would like to thank Dr. Alexander Bockmayr
-of Max Planck Institute, Germany for having used the program and
-reported several bugs of cdd.  I appreciated a great help of
-Dr. David Bremner of McGill University, Canada, who did extensive
-experiments on  cdd and improved my set cardinality code
-considerably.
+There are many people who helped me to improve cdd,  in particular,
+I am indebted to Dr. Alain Prodon (EPFL) , Dr. Francois Margot
+(UBC, Canada) , Dr. Henry Crapo (INRIA, France),
+Dr. Alexander Bockmayr (Max Planck Institute, Germany), 
+Mr. David Bremner (McGill University, Canada),
+Dr. George Fankhauser (ETH Zurich) and
+Dr.  Matthew Saltzman (Clemson University, U.S.A.). 
+Finally, I would like to thank Prof. H.-J. L\"uthi
+(ETH Zurich) who has made the current new development
+possible. 
 
 \addtolength{\baselineskip}{-0.5\baselineskip}
 \begin{thebibliography}{99}
-\bibitem[AF92]{AF} Avis, D.  and Fukuda, K., ^^ ^^ A pivoting algorithm
+\bibitem[AF92]{AF} Avis, D.  and Fukuda, K., ``A pivoting algorithm
         for convex hulls and vertex enumeration of arrangements
         and polyhedra," {\em Discrete Comput Geometry} 8
         (1992), pp. 295-313.
 
 \bibitem[CGAF93]{CGAF} Ceder, G., Garbulski, G.D.,  Avis, D. and Fukuda, K., 
-^^ ^^ Ground states of a ternary lattice model with nearest
+``Ground states of a ternary lattice model with nearest
 and next-nearest neighbor interactions,"
 {\em Physical Review B\/}, Vol.49, No. 1, (1994)  pp. 1-7.
 
-\bibitem[G90]{G} Grishukhin, V.P., ^^ ^^ All facets of
+\bibitem[G90]{G} Grishukhin, V.P., ``All facets of
 the cut cone for n=7 are known," European Journal of
 Combinatorics 11 (1990), 115-117.
 
 \bibitem[MRTT53]{MRTT} Motzkin, T.S. , Raiffa, H.,  
 Thompson, G.L. and  Thrall, R.M., ``The double description method," 
-in  ^^ ^^ Contribution to the Theory of Games, Vol. II"
+in  ``Contribution to the Theory of Games, Vol. II"
 (H.W. Kuhn and A.W. Tucker, eds.),
 Annals of Math. Studies 28,  Princeton University Press, 1953, pp.81-103.
 

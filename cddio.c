@@ -1,6 +1,6 @@
 /* cddio.c:  Basic Input and Output Procedures for cdd.c
    written by Komei Fukuda, fukuda@ifor.math.ethz.ch
-   Version 0.56, August 7, 1995
+   Version 0.60, August 21, 1996
 */
 
 /* cdd.c : C-Implementation of the double description method for
@@ -83,14 +83,33 @@ void SetWriteFile(FILE **f, DataFileType fname, char cflag, char *fscript)
 {
   boolean quit=FALSE;
   char *extension;
-  
+  DataFileType newname;
+
   switch (cflag) {
     case 'o':
-      extension=".ext";break;
+      switch (Conversion) {
+        case ExtToIne:
+          extension=".ine"; break;     /* output file for ine data */
+        case IneToExt:   case Projection:
+          extension=".ext"; break;     /* output file for ext data */
+        case LPmax:  case LPmin:  case InteriorFind:
+          extension=".lps"; break;     /* output file for LPmax, LPmin, interior_find */
+        default:
+        extension=".out";break;
+      }
+      break;
     case 'a':
-      extension=".adj";break;
+      if (Conversion==IneToExt)
+        extension=".ead";       /* adjacency file for ext data */
+      else
+        extension=".iad";       /* adjacency file for ine data */
+      break;
     case 'i':
-      extension=".icd";break;
+      if (Conversion==IneToExt)
+        extension=".ecd";       /* ext incidence file */
+      else
+        extension=".icd";       /* ine incidence file */
+      break;
     case 'l':
       extension=".ddl";break;
     case 'd':
@@ -123,8 +142,17 @@ void SetWriteFile(FILE **f, DataFileType fname, char cflag, char *fscript)
   strcpy(fname,ifilehead); 
   strcat(fname,extension); 
   if (strcmp(inputfile, fname)==0) {
-    strcpy(fname,inputfile); 
-    strcat(fname,extension); 
+    strcpy(newname,fname);  
+    strcat(newname,".old");
+    rename(fname,newname);
+    if (DynamicWriteOn){
+      printf("Default output file %s exists.\n",fname);
+      printf("Caution: The old file %s is renamed to %s!\n",fname,newname);
+      printf("Create a new file %s.\n",fname);
+    }
+/*    strcpy(fname,inputfile); 
+      strcat(fname,extension);
+*/
   }
   *f = fopen(fname, "w");
   if (DynamicWriteOn) printf("%s file %s is open\n",fscript,fname);
@@ -153,7 +181,7 @@ void SetNumberType(char *line)
   }
 }
 
-void ProcessCommandLine(char *line)
+void ProcessCommandLine(rowrange m_input, colrange n_input, char *line)
 {
   colrange j;
   long var,msize;
@@ -195,10 +223,10 @@ void ProcessCommandLine(char *line)
   if (strncmp(line, "#adjacency", 10)==0) {
     AdjacencyOutput = AdjacencyDegree;
     fscanf(reading,"%ld", &msize);
-    set_initialize(&CheckPoints, minput+1);
+    set_initialize(&CheckPoints, m_input+1);
     for (j=1;j<=msize;j++) {
       fscanf(reading,"%ld",&var);
-      if (var <= minput+1) set_addelem(CheckPoints,var);
+      if (var <= m_input+1) set_addelem(CheckPoints,var);
     }
     return;
   }
@@ -293,7 +321,7 @@ void ProcessCommandLine(char *line)
     return;
   }
   if (strncmp(line, "preprojection", 13)==0 && Conversion != Projection) {
-    set_initialize(&projvars,nn);
+    set_initialize(&projvars,n_input);
     fscanf(reading,"%ld", &projdim);
     if (debug) printf("dimension of projection = %ld  in variables:\n",projdim);
     for (j=1;j<=projdim;j++) {
@@ -309,7 +337,7 @@ void ProcessCommandLine(char *line)
   }
   if (strncmp(line, "maximize", 8)==0 && Conversion != LPmax) {
     if (debug) printf("linear maximization is chosen.\n");
-    for (j=0;j<nn;j++) {
+    for (j=0;j<n_input;j++) {
       fscanf(reading,"%lf",&cost);
       LPcost[j]=cost;
       if (debug) printf(" cost[%ld] = %.9E\n",j,LPcost[j]);
@@ -322,7 +350,7 @@ void ProcessCommandLine(char *line)
   }
   if (strncmp(line, "minimize", 8)==0 && Conversion != LPmin) {
     if (debug) printf("linear minimization is chosen.\n");
-    for (j=0;j<nn;j++) {
+    for (j=0;j<n_input;j++) {
       fscanf(reading,"%lf",&cost);
       LPcost[j]=cost;
       if (debug) printf(" cost[%ld] = %.9E\n",j,LPcost[j]);
@@ -331,6 +359,16 @@ void ProcessCommandLine(char *line)
     if (debug) {
       printf("\n");
     }
+    return;
+  }
+  if (strncmp(line, "dual_simplex", 12)==0 && LPsolver != DualSimplex) {
+    if (DynamicWriteOn) printf("Use the dual simplex method.\n");
+    LPsolver=DualSimplex;
+    return;
+  }
+  if (strncmp(line, "criss-cross", 9)==0 && LPsolver != CrissCross) {
+    if (DynamicWriteOn) printf("Use the crss-cross method.\n");
+    LPsolver=CrissCross;
     return;
   }
   if (strncmp(line, "find_interior", 13)==0 && Conversion != InteriorFind) {
@@ -345,7 +383,8 @@ void ProcessCommandLine(char *line)
   }
 }
 
-void AmatrixInput(boolean *successful)
+void AmatrixInput(rowrange *m_input, colrange *n_input,
+  rowrange *m_size, colrange *n_size, Amatrix A, boolean *successful)
 {
   long i,j;
   double value;
@@ -371,20 +410,20 @@ void AmatrixInput(boolean *successful)
       found=TRUE;
     }
   }
-  fscanf(reading, "%ld %ld %s", &minput, &ninput, numbtype);
-  printf("size = %ld x %ld\nNumber Type = %s\n", minput, ninput, numbtype);
+  fscanf(reading, "%ld %ld %s", m_input, n_input, numbtype);
+  printf("size = %ld x %ld\nNumber Type = %s\n", *m_input, *n_input, numbtype);
   SetNumberType(numbtype);
   if (Number==Unknown || Number == Rational) {
       goto _L99;
     } 
   Inequality=ZeroRHS;
-  for (i=1; i<=minput && !decided; i++) {
+  for (i=1; i<= *m_input && !decided; i++) {
     fscanf(reading,"%lf", &value);
     if (fabs(value) > zero) {
       Inequality = NonzeroRHS;
       decided=TRUE;
     }
-    for (j=2; j<=ninput; j++) {
+    for (j=2; j<= *n_input; j++) {
       fscanf(reading,"%lf", &value);
     }
     fgets(line,linelenmax,reading);
@@ -392,26 +431,26 @@ void AmatrixInput(boolean *successful)
     if (debug) putchar('\n');
   }
   if (Inequality==NonzeroRHS) {
-  	printf("Nonhomogeneous system with  m = %5ld  n = %5ld\n", minput, ninput);
-  	nn = ninput;
+  	printf("Nonhomogeneous system with  m = %5ld  n = %5ld\n", *m_input, *n_input);
+  	*n_size = *n_input;
   }
   else {
-    printf("Homogeneous system with  m = %5ld  n = %5ld\n", minput, ninput);
-  	nn = ninput-1;
+    printf("Homogeneous system with  m = %5ld  n = %5ld\n", *m_input, *n_input);
+  	*n_size = *n_input-1;
   }
-  if (nn > NMAX || minput > MMAX) {
+  if (*n_size > NMAX || *m_input > MMAX) {
     Error = DimensionTooLarge;
     goto _L99;
   }
   
   RestrictedEnumeration = FALSE;
   RelaxedEnumeration = FALSE;
-  EqualityIndex=(long *)calloc(minput+2, sizeof *EqualityIndex);
-  for (i = 0; i <= minput+1; i++) EqualityIndex[i]=0;
+  EqualityIndex=(long *)calloc(*m_input+2, sizeof *EqualityIndex);
+  for (i = 0; i <= *m_input+1; i++) EqualityIndex[i]=0;
 
   while (!feof(reading)) {
     fscanf(reading,"%s", command);
-    ProcessCommandLine(command);
+    ProcessCommandLine(*m_input, *n_input, command);
   } 
   fclose(reading);
 
@@ -431,14 +470,14 @@ void AmatrixInput(boolean *successful)
   	}
   }
   fscanf(reading, "%ld %ld %s", &value1, &value2, stemp);
-  for (i = 1; i <= minput; i++) {
-    AA[i-1]=(double *) calloc(ninput, sizeof value);
-    for (j = 1; j <= ninput; j++) {
+  for (i = 1; i <= *m_input; i++) {
+    A[i-1]=(double *) calloc(*n_input, sizeof value);
+    for (j = 1; j <= *n_input; j++) {
       fscanf(reading, "%lf", &value);
       if (Inequality==NonzeroRHS) 
-      	AA[i-1][j - 1] = value;
+      	A[i-1][j - 1] = value;
       else if (j>=2) {
-        AA[i-1][j - 2] = value;
+        A[i-1][j - 2] = value;
 	  }
 	  if (debug) printf("a(%3ld,%5ld) = %10.4f\n",i,j,value);
     }  /*of j*/
@@ -459,50 +498,50 @@ void AmatrixInput(boolean *successful)
   switch (Conversion) {
   case IneToExt:
     if (Inequality==NonzeroRHS){
-      mm = minput + 1;
-      AA[mm-1]=(double *) calloc(ninput, sizeof value);
-      for (j = 1; j <= ninput; j++) {   /*artificial row for x_1 >= 0*/
+      *m_size = *m_input + 1;
+      A[*m_size-1]=(double *) calloc(*n_input, sizeof value);
+      for (j = 1; j <= *n_input; j++) {   /*artificial row for x_1 >= 0*/
         if (j == 1)
-          AA[mm - 1][j - 1] = 1.0;
+          A[*m_size - 1][j - 1] = 1.0;
         else
-          AA[mm - 1][j - 1] = 0.0;
+          A[*m_size - 1][j - 1] = 0.0;
       }
     } else {
-      mm = minput;
+      *m_size = *m_input;
     }
     break;
 
   case ExtToIne:
-    mm = minput;
+    *m_size = *m_input;
     break;
 
   case LPmax:  case LPmin:
-    mm = minput + 1;
-    OBJrow=mm;
+    *m_size = *m_input + 1;
+    OBJrow=*m_size;
     RHScol=1L;
-    AA[mm-1]=(double *) calloc(ninput, sizeof value);
-    for (j = 1; j <= ninput; j++) {   /*objective row */
- 	   AA[mm - 1][j - 1] = LPcost[j-1];
+    A[*m_size-1]=(double *) calloc(*n_input, sizeof value);
+    for (j = 1; j <= *n_input; j++) {   /*objective row */
+ 	   A[*m_size - 1][j - 1] = LPcost[j-1];
  	}
 	break;
 
   default:
-    mm = minput;
+    *m_size = *m_input;
   }
-  SetInequalitySets(EqualityIndex);
+  SetInequalitySets(*m_size, EqualityIndex);
   *successful = TRUE;
 _L99: ;
   if (reading!=NULL) fclose(reading);
 }
 
-void WriteRayRecord(FILE *f, RayRecord *RR)
+void WriteRayRecord(FILE *f, colrange n_size, RayRecord *RR)
 {
   long j;
   double scaler;
 
   if (Inequality == ZeroRHS) {
     fprintf(f, " %2d", 0);
-    for (j = 0; j < nn; j++)
+    for (j = 0; j < n_size; j++)
       WriteReal(f, RR->Ray[j]);
   } 
   else {
@@ -511,24 +550,24 @@ void WriteRayRecord(FILE *f, RayRecord *RR)
       if (RR->Ray[0] > 0) {
         if (Conversion == IneToExt) {
 	      fprintf(f, " %2d", 1);
-	      for (j = 1; j < nn; j++)
+	      for (j = 1; j < n_size; j++)
 	      WriteReal(f, RR->Ray[j] / scaler);
         } 
         else {
 	      /* hull computation is chosen */
-          for (j = 0; j < nn; j++)
+          for (j = 0; j < n_size; j++)
 	        WriteReal(f, RR->Ray[j]);
 	    }
       }
       else {
         /* hull computation must have been chosen, since RR->Ray[0] is negative */
-	    for (j = 0; j < nn; j++)
+	    for (j = 0; j < n_size; j++)
 	      WriteReal(f, RR->Ray[j]);
       }
     } 
     else {
       fprintf(f, " %2d", 0);
-      for (j = 1; j < nn; j++)
+      for (j = 1; j < n_size; j++)
         WriteReal(f, RR->Ray[j]);
     }
   }
@@ -539,43 +578,43 @@ void WriteRayRecord(FILE *f, RayRecord *RR)
 }
 
 
-void WriteRayRecord2(FILE *f, RayRecord *RR)
+void WriteRayRecord2(FILE *f, colrange n_size, RayRecord *RR)
 {
   long j;
 
   fprintf(f, " Ray = ");
-  for (j = 0; j < nn; j++)
+  for (j = 0; j < n_size; j++)
     fprintf(f, "%6.2f", RR->Ray[j]);
   putchar('\n');
   fprintf(f, " ZeroSet =");
-  WriteSetElements(f, RR->ZeroSet);
+  set_fwrite(f, RR->ZeroSet);
   putc('\n', f);
 }
 
-void WriteSubMatrixOfAA(FILE *f,long *ChosenRow, long *ChosenCol,
-      InequalityType ineq)
+void WriteSubMatrixOfA(FILE *f, rowrange m_size, colrange n_size, Amatrix A,
+    rowset ChosenRow, colset ChosenCol, InequalityType ineq)
 {
   long i,j;
 
   fprintf(f, "begin\n");
   if (ineq==ZeroRHS)
-    fprintf(f, "  %ld   %ld    real\n",mm, set_card(ChosenCol)+1);
+    fprintf(f, "  %ld   %ld    real\n",m_size, set_card(ChosenCol)+1);
   else
-    fprintf(f, "  %ld   %ld    real\n",mm, set_card(ChosenCol));
-  for (i=1; i <= mm; i++) {
+    fprintf(f, "  %ld   %ld    real\n",m_size, set_card(ChosenCol));
+  for (i=1; i <= m_size; i++) {
     if (set_member(i,ChosenRow)) {
       if (ineq==ZeroRHS){  /* If RHS==0, output zero first */
         WriteReal(f, 0);
-        for (j=1; j <= nn; j++) {
+        for (j=1; j <= n_size; j++) {
           if (set_member(j, ChosenCol)){ 
-            WriteReal(f, AA[i-1][j-1]);
+            WriteReal(f, A[i-1][j-1]);
           }
         }
       }
       else {
-        for (j=1; j <= nn; j++) {
+        for (j=1; j <= n_size; j++) {
           if (set_member(j, ChosenCol)){ 
-            WriteReal(f, AA[i-1][j-1]);
+            WriteReal(f, A[i-1][j-1]);
           }
         }
       }
@@ -606,12 +645,12 @@ void WriteAmatrix(FILE *f, Amatrix A, long rowmax, long colmax,
   fprintf(f, "end\n");
 }
 
-void WriteBmatrix(FILE *f, Bmatrix T)
+void WriteBmatrix(FILE *f, colrange n_size, Bmatrix T)
 {
   colrange j1, j2;
 
-  for (j1 = 0; j1 < nn; j1++) {
-    for (j2 = 0; j2 < nn; j2++) {
+  for (j1 = 0; j1 < n_size; j1++) {
+    for (j2 = 0; j2 < n_size; j2++) {
       fprintf(f, "%15.7f ", T[j1][j2]);
     }  /*of j2*/
     putc('\n', f);
@@ -639,22 +678,12 @@ void WriteReal(FILE *f, double x)
 }
 
 
-void WriteSetElements(FILE *f, long *S)
-{
-  rowrange i;
-
-  for (i = 1; i <= mm; i++) {
-    if (set_member(i, S))
-      fprintf(f, " %1ld", i);
-  }
-}
-
-void WriteIncidence(FILE *f, RayRecord *RR)
+void WriteIncidence(FILE *f, rowrange m_size, colrange n_size, RayRecord *RR)
 {
   rowset cset;
   long zcar;
 
-  set_initialize(&cset,mm);
+  set_initialize(&cset,m_size);
   zcar = set_card(RR->ZeroSet);
   switch (IncidenceOutput) {
 
@@ -663,20 +692,19 @@ void WriteIncidence(FILE *f, RayRecord *RR)
     break;
 
   case IncSet:
-    if (mm - zcar >= zcar) {
+    if (m_size - zcar >= zcar) {
       fprintf(f, " %1ld : ", zcar);
-      WriteSetElements(f, RR->ZeroSet);
+      set_fwrite(f, RR->ZeroSet);
     } else {
       set_diff(cset, GroundSet, RR->ZeroSet);
-      fprintf(f, " %1ld : ", zcar - mm);
-      WriteSetElements(f, cset);
+      fprintf(f, " %1ld : ", zcar - m_size);
+      set_fwrite(f, cset);
     }
     break;
 
   case IncOff:
     break;
   }
-  putc('\n', f);
   set_free(cset);
 }
 
@@ -769,17 +797,17 @@ void WriteRunningMode(FILE *f)
   }
   if (RestrictedEnumeration) {
     fprintf(f, "*The equality option is chosen.\n* => Permanently active rows are:");
-    WriteSetElements(f,EqualitySet);
+    set_fwrite(f,EqualitySet);
     fprintf(f,"\n");
   }
   if (RelaxedEnumeration) {
     fprintf(f, "*The strict_inequality option is chosen.\n* => Permanently nonactive rows are:");
-    WriteSetElements(f,NonequalitySet);
+    set_fwrite(f,NonequalitySet);
     fprintf(f,"\n");
   }
 }
 
-void WriteRunningMode2(FILE *f)
+void WriteRunningMode2(FILE *f, rowrange m_size, colrange n_size)
 {
   long j;
 
@@ -833,13 +861,13 @@ void WriteRunningMode2(FILE *f)
     
     case LPmax:
       fprintf(f, "maximize\n");
-      for (j=0; j<nn; j++) WriteReal(f,LPcost[j]);
+      for (j=0; j<n_size; j++) WriteReal(f,LPcost[j]);
       fprintf(f,"\n");
       break;
 
     case LPmin:
       fprintf(f, "minimize\n");
-      for (j=0; j<nn; j++) WriteReal(f,LPcost[j]);
+      for (j=0; j<n_size; j++) WriteReal(f,LPcost[j]);
       fprintf(f,"\n");
       break;
 
@@ -851,23 +879,23 @@ void WriteRunningMode2(FILE *f)
   }
   if (RestrictedEnumeration) {
     fprintf(f, "equality ");
-    WriteSetElements(f,EqualitySet);
+    set_fwrite(f,EqualitySet);
     fprintf(f,"\n");
   }
   if (RelaxedEnumeration) {
     fprintf(f, "strict_inequality ");
-    WriteSetElements(f,NonequalitySet);
+    set_fwrite(f,NonequalitySet);
     fprintf(f,"\n");
   }
 }
 
-void WriteCompletionStatus(FILE *f)
+void WriteCompletionStatus(FILE *f, rowrange m_size, colrange n_size, rowrange iter)
 {
-  if (Iteration<mm && CompStatus==AllFound) {
-    fprintf(f,"*Computation completed at Iteration %4ld.\n", Iteration);
+  if (iter<m_size && CompStatus==AllFound) {
+    fprintf(f,"*Computation completed at Iteration %4ld.\n", iter);
   } 
   if (CompStatus == RegionEmpty) {
-    fprintf(f,"*Computation completed at Iteration %4ld because the region found empty.\n", Iteration);
+    fprintf(f,"*Computation completed at Iteration %4ld because the region found empty.\n", iter);
   }   
 }
 
@@ -888,7 +916,8 @@ void WriteTimes(FILE *f)
 }
 
 
-void WriteAdjacencyDegree(FILE *f)
+void WriteAdjacencyDegree(FILE *f, rowrange m_input, colrange n_input,
+    rowrange m_size, colrange n_size, Amatrix A, rowrange iter)
 {
   RayRecord *RayPtr1, *RayPtr2;
   long pos1, pos2, deg, feasdeg, icd, feasicd;
@@ -909,8 +938,8 @@ void WriteAdjacencyDegree(FILE *f)
     break;
   }
   fprintf(f, "*cdd input file : %s   (%4ld  x %4ld)\n",
-	  inputfile, minput, ninput);
-  fprintf(f, "*At iteration =  %ld\n", Iteration);  
+	  inputfile, m_input, n_input);
+  fprintf(f, "*At iteration =  %ld\n", iter);  
   fprintf(f,"begin\n");
   fprintf(f,"  %ld\n",RayCount);
   if (RayCount==0){
@@ -920,7 +949,7 @@ void WriteAdjacencyDegree(FILE *f)
   for (RayPtr1=FirstRay, pos1=1;RayPtr1 != NULL; RayPtr1 = RayPtr1->Next, pos1++){
     for (RayPtr2=FirstRay, pos2=1,deg=0,feasdeg=0;RayPtr2 != NULL; RayPtr2 = RayPtr2->Next, pos2++){
       if (RayPtr1!=RayPtr2){
-        CheckAdjacency2(&RayPtr1, &RayPtr2, &adj);
+        CheckAdjacency2(m_size, n_size, A, &RayPtr1, &RayPtr2, &adj);
         if (adj) {
           deg++;
           if (RayPtr2->feasible) feasdeg++;
@@ -945,7 +974,8 @@ void WriteAdjacencyDegree(FILE *f)
 _L99:;
 }
 
-void WriteAdjacency(FILE *f)
+void WriteAdjacency(FILE *f, rowrange m_input, colrange n_input, 
+    rowrange m_size, colrange n_size, Amatrix A)
 {
   RayRecord *RayPtr1, *RayPtr2;
   long pos1, pos2, degree;
@@ -967,7 +997,7 @@ void WriteAdjacency(FILE *f)
     break;
   }
   fprintf(f, "*cdd input file : %s   (%4ld  x %4ld)\n",
-	  inputfile, minput, ninput);
+	  inputfile, m_input, n_input);
   fprintf(f, "*cdd output file: %s\n", outputfile);
   fprintf(f,"begin\n");
   fprintf(f,"  %ld\n",RayCount);
@@ -978,7 +1008,7 @@ void WriteAdjacency(FILE *f)
   for (RayPtr1=FirstRay, pos1=1;RayPtr1 != NULL; RayPtr1 = RayPtr1->Next, pos1++){
     for (RayPtr2=FirstRay, pos2=1,degree=0; RayPtr2 != NULL; RayPtr2 = RayPtr2->Next, pos2++){
       if (RayPtr1!=RayPtr2){
-        CheckAdjacency2(&RayPtr1, &RayPtr2, &adj);
+        CheckAdjacency2(m_size, n_size, A, &RayPtr1, &RayPtr2, &adj);
         if (adj) {
           degree++;
           if (degree==1){
@@ -1009,7 +1039,8 @@ _L99:;
   fprintf(f,"end\n");
 }
 
-void WriteDDResult(void)
+void WriteDDResult(rowrange m_input, colrange n_input, 
+    rowrange m_size, colrange n_size, Amatrix A, rowrange iter)
 {
   RayRecord *TempPtr;
 
@@ -1017,9 +1048,9 @@ void WriteDDResult(void)
   time(&endtime);
   WriteProgramDescription(writing);
   fprintf(writing, "*Input File:%.*s   (%4ld  x %4ld)\n",
-	  filenamelen, inputfile, minput, ninput);
+	  filenamelen, inputfile, m_input, n_input);
   WriteRunningMode(writing);
-  WriteCompletionStatus(writing);
+  WriteCompletionStatus(writing, m_size, n_size, iter);
   WriteTimes(writing);
   if (Conversion == ExtToIne)
     fprintf(writing,
@@ -1050,10 +1081,10 @@ void WriteDDResult(void)
   fprintf(writing, "begin\n");
   switch (Inequality) {
   case ZeroRHS:
-    fprintf(writing, " %8ld  %5ld    real\n", FeasibleRayCount, nn + 1);
+    fprintf(writing, " %8ld  %5ld    real\n", FeasibleRayCount, n_size + 1);
     break;
   case NonzeroRHS:
-    fprintf(writing, " %8ld  %5ld    real\n", FeasibleRayCount, nn);
+    fprintf(writing, " %8ld  %5ld    real\n", FeasibleRayCount, n_size);
     break;
   }
   if (IncidenceOutput == IncSet) {
@@ -1080,30 +1111,30 @@ void WriteDDResult(void)
       break;
     }
     fprintf(writing_icd, "*cdd input file : %s   (%4ld  x %4ld)\n",
-	  inputfile, minput, ninput);
+	  inputfile, m_input, n_input);
     fprintf(writing_icd, "*cdd output file: %s\n", outputfile);
     fprintf(writing_icd, "begin\n");
-    fprintf(writing_icd, "%8ld%5ld%5ld\n", FeasibleRayCount, minput, mm);
+    fprintf(writing_icd, "%8ld%5ld%5ld\n", FeasibleRayCount, m_input, m_size);
   }
   TempPtr = FirstRay;
   while (TempPtr != NULL) {
     if (TempPtr->feasible) {
-      WriteRayRecord(writing, TempPtr);
+      WriteRayRecord(writing, n_size, TempPtr);
       if (IncidenceOutput == IncSet)
-        WriteIncidence(writing_icd, TempPtr);
+        WriteIncidence(writing_icd, m_size, n_size, TempPtr);
     }
     TempPtr = TempPtr->Next;
   }
   fprintf(writing, "end\n");
   if (Conversion == IneToExt) fprintf(writing, "hull\n");
   if (DynamicWriteOn) {
-    WriteCompletionStatus(stdout);
+    WriteCompletionStatus(stdout, m_size, n_size, iter);
     WriteTimes(stdout);
   }
   if (LogWriteOn) {
     fprintf(writing_log, "end\n");
     WriteRunningMode(writing_log);
-    WriteCompletionStatus(writing_log);
+    WriteCompletionStatus(writing_log, m_size, n_size, iter);
     if (PreOrderedRun) {
       fprintf(writing_log, "*set_intersection total#, effective#, loss# = %ld   %ld   %ld\n", 
       count_int, count_int_good, count_int_bad);
@@ -1114,11 +1145,12 @@ void WriteDDResult(void)
     fprintf(writing_icd, "end\n");
   if (AdjacencyOutput != AdjOff){
     if (DynamicWriteOn) printf("Writing the adjacency file...\n");
-    WriteAdjacency(writing_adj);
+    WriteAdjacency(writing_adj, m_input, n_input, m_size, n_size, A);
   }
 }
 
-void WriteDecompResult(void)
+void WriteDecompResult(rowrange m_input, colrange n_input, 
+    rowrange m_size, colrange n_size, rowrange iter)
 {
   RayRecord *TempPtr;
   static int callnumber=0;
@@ -1127,7 +1159,7 @@ void WriteDecompResult(void)
   if (callnumber==1) {
     WriteProgramDescription(writing_dex);
     fprintf(writing_dex, "*Input File:%.*s   (%4ld  x %4ld)\n",
-	  filenamelen, inputfile, minput, ninput);
+	  filenamelen, inputfile, m_input, n_input);
     if (Conversion == ExtToIne)
       fprintf(writing_dex,
         "*Since hull computation is chosen, the output is a minimal inequality system\n");
@@ -1135,23 +1167,23 @@ void WriteDecompResult(void)
   fprintf(writing_dex, "begin\n");
   switch (Inequality) {
   case ZeroRHS:
-    fprintf(writing_dex, " %8ld  %5ld    real\n", FeasibleRayCount, nn + 1);
+    fprintf(writing_dex, " %8ld  %5ld    real\n", FeasibleRayCount, n_size + 1);
     break;
   case NonzeroRHS:
-    fprintf(writing_dex, " %8ld  %5ld    real\n", FeasibleRayCount, nn);
+    fprintf(writing_dex, " %8ld  %5ld    real\n", FeasibleRayCount, n_size);
     break;
   }
   TempPtr = FirstRay;
   while (TempPtr != NULL) {
     if (TempPtr->feasible) {
-      WriteRayRecord(writing_dex, TempPtr);
+      WriteRayRecord(writing_dex, n_size, TempPtr);
     }
     TempPtr = TempPtr->Next;
   }
   fprintf(writing_dex, "end\n");
   if (LogWriteOn) {
     fprintf(writing_log, "end\n");
-    WriteCompletionStatus(writing_log);
+    WriteCompletionStatus(writing_log, m_size, n_size, iter);
     if (PreOrderedRun) {
       fprintf(writing_log, "*set_intersection total#, effective#, loss# = %ld   %ld   %ld\n", 
       count_int, count_int_good, count_int_bad);
@@ -1159,49 +1191,51 @@ void WriteDecompResult(void)
     WriteTimes(writing_log);
   }
   if (DynamicWriteOn) {
-    WriteCompletionStatus(stdout);
+    WriteCompletionStatus(stdout, m_size, n_size, iter);
     WriteTimes(stdout);
   }
 }
 
-void WriteProjRayRecord(FILE *f, RayRecord *RR, long *dbrow)
+void WriteProjRayRecord(FILE *f, rowrange m_size, colrange n_size, 
+    Amatrix A, RayRecord *RR, long *dbrow)
 {
   long i,j,k;
   static double *vec;
   static rowset dbset;
   static long mprev=0;
   
-  if (dbset==NULL || mprev<mm){
-    set_initialize(&dbset,mm);  
-    vec=(double *)calloc(mm, sizeof *vec);
+  if (dbset==NULL || mprev<m_size){
+    set_initialize(&dbset,m_size);  
+    vec=(double *)calloc(m_size, sizeof *vec);
     /* initialize only for the first time or when a larger space is needed */
-    mprev=mm;
+    mprev=m_size;
     if (debug) printf("mprev is replaced with  = %ld\n", mprev);
   }
-  for (j = 1; j <= mm-nn; j++){
+  for (j = 1; j <= m_size-n_size; j++){
     i=dbrow[j];
     set_addelem(dbset,i);
     if (debug) printf("index %ld is added to dbset\n",i);
     vec[i-1]=0;
-    for (k=1; k<=nn; k++) {
-      vec[i-1]+= (RR->Ray[k-1])*AA[j-1][k-1];
+    for (k=1; k<=n_size; k++) {
+      vec[i-1]+= (RR->Ray[k-1])*A[j-1][k-1];
     }
     if (debug) printf("vec[ %ld]= %.5E \n",i-1, vec[i-1]);
   }
   i=1;
-  for (j = 1; j <= mm; j++){
+  for (j = 1; j <= m_size; j++){
     if (!set_member(j,dbset)){
       vec[j-1]=RR->Ray[i-1];
       i++;
     }
   }
   fprintf(f, " %2d", 0);
-  for (j = 0; j < mm; j++)
+  for (j = 0; j < m_size; j++)
     WriteReal(f, vec[j]);
   putc('\n', f);
 }
 
-void WriteProjResult(long *dbrow)
+void WriteProjResult(rowrange m_input, colrange n_input, 
+    rowrange m_size, colrange n_size, Amatrix A, long *dbrow, rowrange iter)
 {
   RayRecord *TempPtr;
 
@@ -1209,9 +1243,9 @@ void WriteProjResult(long *dbrow)
   time(&endtime);
   WriteProgramDescription(writing);
   fprintf(writing, "*Input File:%.*s   (%4ld  x %4ld)\n",
-	  filenamelen, inputfile, minput, ninput);
+	  filenamelen, inputfile, m_input, n_input);
   WriteRunningMode(writing);
-  WriteCompletionStatus(writing);
+  WriteCompletionStatus(writing, m_size, n_size, iter);
   WriteTimes(writing);
   fprintf(writing, "*FINAL RESULT:\n");
   if (DynamicWriteOn)
@@ -1222,39 +1256,40 @@ void WriteProjResult(long *dbrow)
   fprintf(writing, "*Number of Vertices =%8ld,   Rays =%8ld\n",
 	 VertexCount, FeasibleRayCount - VertexCount);
   fprintf(writing, "begin\n");
-  fprintf(writing, " %8ld  %5ld    real\n", FeasibleRayCount, mm + 1);
+  fprintf(writing, " %8ld  %5ld    real\n", FeasibleRayCount, m_size + 1);
   TempPtr = FirstRay;
   while (TempPtr != NULL) {
-    WriteProjRayRecord(writing, TempPtr, dbrow);
+    WriteProjRayRecord(writing, m_size, n_size, A, TempPtr, dbrow);
     TempPtr = TempPtr->Next;
   }
   fprintf(writing, "end\n");
   if (DynamicWriteOn) {
-    WriteCompletionStatus(stdout);
+    WriteCompletionStatus(stdout, m_size, n_size, iter);
     WriteTimes(stdout);
   }
   if (LogWriteOn) {
     fprintf(writing_log, "end\n");
     WriteRunningMode(writing_log);
-    WriteCompletionStatus(writing_log);
+    WriteCompletionStatus(writing_log, m_size, n_size, iter);
     WriteTimes(writing_log);
   }
   if (AdjacencyOutput != AdjOff){
     if (DynamicWriteOn) printf("Writing the adjacency file...\n");
-    WriteAdjacency(writing_adj);
+    WriteAdjacency(writing_adj, m_input, n_input, m_size, n_size, A);
   }
 }
 
-void InitialWriting(void)
+void InitialWriting(rowrange m_input, colrange n_input, 
+    rowrange m_size, colrange n_size)
 {
   if (LogWriteOn) {
     fprintf(writing_log, "*Input File:%.*s   (%4ld  x %4ld)\n",
-	  filenamelen, inputfile, minput, ninput);
+	  filenamelen, inputfile, m_input, n_input);
 	fprintf(writing_log,"*Initial set of hyperplanes: ");
-    WriteSetElements(writing_log, AddedHyperplanes);
+    set_fwrite(writing_log, AddedHyperplanes);
     fprintf(writing_log,"\n");
     fprintf(writing_log, "begin\n");
-    fprintf(writing_log, "%5ld %3d\n", mm - nn, 5);
+    fprintf(writing_log, "%5ld %3d\n", m_size - n_size, 5);
   }
 }
 
@@ -1304,107 +1339,18 @@ void WriteErrorMessages(FILE *f)
   }
 }
 
-void WriteLPResult(FILE *f, LPStatusType LPS, double optval,
-   Arow sol, Arow dsol, colindex NBIndex, rowrange re, colrange se,
-   long iter)
-{
-  long j;
 
-  time(&endtime);
-  fprintf(f,"*cdd LP Solver (Criss-Cross Method) Result\n");  
-  fprintf(f,"*cdd input file : %s   (%4ld  x %4ld)\n",
-	  inputfile, minput, ninput);
-  if (Conversion==LPmax)
-    fprintf(f,"*maximization is chosen.\n");  
-  else if (Conversion==LPmin)
-    fprintf(f,"*minimization is chosen.\n");
-  else if (Conversion==InteriorFind){
-    fprintf(f,"*inerior point computation is chosen.\n");
-    fprintf(f,"*the following is the result of solving the LP:\n");
-    fprintf(f,"*   maximize      x_{d+1}\n");
-    fprintf(f,"*   s.t.    A x + x_{d+1}  <=  b.\n");
-    fprintf(f,"*Thus, the optimum value is zero     if the polyhedron has no interior point.\n");
-    fprintf(f,"*      the optimum value is negative if the polyhedron is empty.\n");
-    fprintf(f,"*      the LP is dual inconsistent   if the polyhedron admits unbounded inscribing balls.\n");
-  }
-  if (Conversion==LPmax||Conversion==LPmin){
-    fprintf(f,"*Objective function is\n");  
-    for (j=0; j<nn; j++){
-      if (j>0 && LPcost[j]>=0 ) fprintf(f," +");
-      if (j>0 && (j % 5) == 0) fprintf(f,"\n");
-      WriteReal(f, LPcost[j]);
-      if (j>0) fprintf(f," X[%3ld]",j);
-    }
-    fprintf(f,"\n");
-  }
-
-  switch (LPS){
-  case Optimal:
-    fprintf(f,"*LP status: a dual pair (x, y) of optimal solutions found.\n");
-    fprintf(f,"begin\n");
-    fprintf(f,"  primal_solution\n");
-    for (j=1; j<nn; j++) {
-      fprintf(f,"  %3ld : ",j);
-      WriteReal(f,sol[j]);
-      fprintf(f,"\n");
-    }
-    fprintf(f,"  dual_solution\n");
-    for (j=1; j<nn; j++){
-      fprintf(f,"  %3ld : ",NBIndex[j+1]);
-      WriteReal(f,dsol[j]);
-      fprintf(f,"\n");
-    }
-    fprintf(f,"  optimal_value : % .9E\n", optval);
-    fprintf(f,"end\n");
-    break;
-
-  case Inconsistent:
-    fprintf(f,"*LP status: LP is inconsistent.\n");
-    fprintf(f,"*The positive combination of original inequalities with\n");
-    fprintf(f,"*the following coefficients will prove the inconsistency.\n");
-    fprintf(f,"begin\n");
-    fprintf(f,"  dual_direction\n");
-    fprintf(f,"  %3ld : \n",re);
-    WriteReal(f,1.0);
-    for (j=1; j<nn; j++){
-      fprintf(f,"  %3ld : ",NBIndex[j+1]);
-      WriteReal(f,dsol[j]);
-      fprintf(f,"\n");
-    }
-    fprintf(f,"end\n");
-    break;
-
-  case DualInconsistent:
-    fprintf(f,"*LP status: LP is dual inconsistent.\n");
-    fprintf(f,"*The linear combination of columns with\n");
-    fprintf(f,"*the following coefficients will prove the dual inconsistency.\n");
-    fprintf(f,"*(It is also an unbounded direction for the primal LP.)\n");
-    fprintf(f,"begin\n");
-    fprintf(f,"  primal_direction\n");
-    for (j=1; j<nn; j++) {
-      fprintf(f,"  %3ld : ",j);
-      WriteReal(f,sol[j]);
-      fprintf(f,"\n");
-    }
-    fprintf(f,"end\n");
-    break;
-
-  default:
-    break;
-  }
-  fprintf(f,"*number of pivot operations = %ld\n", iter);
-  WriteTimes(f);
-}
-
-
-void WriteSolvedProblem(FILE *f)
+void WriteSolvedProblem(FILE *f, rowrange m_input, colrange n_input, 
+    rowrange m_size, colrange n_size, Amatrix A)
 {
   fprintf(f, "*cdd input file : %s   (%4ld  x %4ld)\n",
-	  inputfile, minput, ninput);
+	  inputfile, m_input, n_input);
   fprintf(f, "*The input data has been interpreted as the following.\n");
-  WriteAmatrix(writing_ver,AA,mm,nn,Inequality);
-  WriteRunningMode2(writing_ver);
+  WriteAmatrix(writing_ver,A,m_size,n_size,Inequality);
+  WriteRunningMode2(writing_ver, m_size, n_size);
 }
+
+
 
 /* end of cddio.c */
 

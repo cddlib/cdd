@@ -1,6 +1,6 @@
-/* cdd.h: Header file for cdd.c 
+ /* cdd.h: Header file for cdd.c 
    written by Komei Fukuda, fukuda@ifor.math.ethz.ch
-   Version 0.56, August 7, 1995
+   Version 0.60, August 21, 1996
 */
 
 /* cdd.c : C-Implementation of the double description method for
@@ -10,24 +10,33 @@
    the manual cddman.tex for detail.
 */
 
-#define COPYRIGHT   "Copyright (C) 1995, Komei Fukuda, fukuda@ifor.math.ethz.ch"
-#define DDVERSION   "Version C0.56 (August 7, 1995)"
+#define COPYRIGHT   "Copyright (C) 1996, Komei Fukuda, fukuda@ifor.math.ethz.ch"
+#define DDVERSION   "Version 0.60 (August 21, 1996)"
 #include <time.h>
+#include "dplex.h"
+#include "dplexdef.h"
 
 typedef char boolean;
+
+/* 
 typedef long rowrange;
 typedef long colrange;
-typedef set_type rowset;  /* set_type defined in setoper.h */
+typedef set_type rowset;
 typedef set_type colset;
 typedef long *rowindex;   
-    /* rowindex should be intialized to be an array of [mm+1] components */
 typedef long colindex[NMAX+1];
 typedef double *Amatrix[MMAX];
 typedef double Arow[NMAX];
 typedef double *Bmatrix[NMAX];
+*/
+
+
 typedef char DataFileType[filenamelen];
+
+/*
 typedef char LineType[linelenmax];
 typedef char WordType[wordlenmax];
+*/
 
 typedef struct RayRecord {
   double *Ray;
@@ -67,6 +76,10 @@ typedef enum {
 } ConversionType;
 
 typedef enum {
+  CrissCross,DualSimplex,CombMaxImprove
+} LPsolverType;
+
+typedef enum {
   IncOff=0, IncCardinality, IncSet
 } IncidenceOutputType;
 
@@ -88,18 +101,10 @@ typedef enum {
   InProgress, AllFound, RegionEmpty
 } CompStatusType;
 
-typedef enum {
-  LPSundecided, Optimal, Inconsistent, DualInconsistent, Unbounded, DualUnbounded
-} LPStatusType;
-
-extern long minput, ninput;   /*size of input data [b -A] */
-extern long mm, nn;   /*size of the homogenous system to be solved by dd*/
 extern long projdim;  /*dimension of orthogonal preprojection */
 extern colset projvars;   /*set of variables spanning the space of preprojection, 
      i.e. the remaining variables are to be removed*/
 extern rowset EqualitySet, NonequalitySet, GroundSet, Face, Face1, CheckPoints;
-extern rowrange Iteration, hh;
-extern rowindex OrderVector;
 extern rowindex EqualityIndex;  
 extern rowset AddedHyperplanes, WeaklyAddedHyperplanes, InitialHyperplanes;
 extern long RayCount, FeasibleRayCount, WeaklyFeasibleRayCount,
@@ -107,10 +112,6 @@ extern long RayCount, FeasibleRayCount, WeaklyFeasibleRayCount,
 extern long EdgeCount,TotalEdgeCount;
 extern long count_int,count_int_good,count_int_bad;
 extern boolean DynamicWriteOn, DynamicRayWriteOn, LogWriteOn, debug;
-extern Amatrix AA;
-extern Bmatrix InitialRays;
-extern colindex InitialRayIndex;
-extern LPStatusType LPStatus;
 extern colrange RHScol;   /* LP RHS column */
 extern rowrange OBJrow;   /* LP OBJ row */
 extern Arow LPcost;
@@ -129,9 +130,9 @@ extern boolean RelaxedEnumeration; /* Relaxed enumeration Switch (TRUE if Nonequ
 extern boolean RowDecomposition; /* Row decomposition enumeration Switch */
 extern boolean VerifyInput; /* Verification switch for the input data */
 extern boolean PreOrderedRun; 
-extern boolean QPivotOn; /* QPivot Switch (TRUE if Q-Pivot scheme of Jack Edmonds is chosen) */
 extern CompStatusType CompStatus;     /* Computation Status */
 extern ConversionType Conversion;
+extern LPsolverType LPsolver;
 extern IncidenceOutputType IncidenceOutput;
 extern AdjacencyOutputType AdjacencyOutput;
 extern ErrorType Error;
@@ -149,93 +150,88 @@ void SetWriteFile(FILE **, DataFileType, char, char *);
 
 
 void SetNumberType(char *);
-void ProcessCommandLine(char *);
-void AmatrixInput(boolean *);
-void SetInequalitySets(rowindex);
+void ProcessCommandLine(rowrange, colrange, char *);
+void AmatrixInput(rowrange *, colrange *, rowrange *, colrange *, Amatrix, boolean *);
+void SetInequalitySets(rowrange, rowindex);
 
 void WriteReal(FILE *, double);
-void WriteSetElements(FILE *, long *);
-void WriteRayRecord(FILE *, RayRecord *);
-void WriteRayRecord2(FILE *, RayRecord *);
-double AValue(double *, rowrange );
-void WriteIncidence(FILE *, RayRecord *);
-void StoreRay1(double *, RayRecord *, boolean *);
-void StoreRay2(double *, RayRecord *, boolean *, boolean *);
-void AddRay(double *);
-void AddArtificialRay(void);
-void ConditionalAddEdge(RayRecord *Ray1, RayRecord *Ray2, RayRecord *ValidFirstRay);
-void CreateInitialEdges(void);
-void UpdateEdges(RayRecord *RRbegin, RayRecord *RRend);
-void FreeDDMemory(void);
-void Normalize(double *);
-void ZeroIndexSet(double *, long *);
-void CopyBmatrix(Bmatrix T, Bmatrix TCOPY);
-void SelectPivot1(Amatrix, HyperplaneOrderType,
-   rowrange, long *,long *, rowrange *, colrange *,boolean *);
-double TableauEntry(Amatrix, Bmatrix T, rowrange, colrange);
-void WriteTableau(FILE *,Amatrix, Bmatrix T,InequalityType);
-void SelectPivot2(Amatrix, Bmatrix T,
-   HyperplaneOrderType,rowrange, long *,long *, rowrange *, colrange *,boolean *);
-void GausianColumnPivot1(Amatrix, rowrange, colrange,rowrange);
-void GausianColumnPivot2(Amatrix, Bmatrix,  rowrange, colrange);
-void GausianColumnQPivot2(Amatrix, Bmatrix, double *,rowrange, colrange);
-void InitializeBmatrix(Bmatrix T);
-void SetToIdentity(Bmatrix T);
-void free_Bmatrix(Bmatrix T);
-void WriteBmatrix(FILE *, Bmatrix T);
-void ReduceAA(long *, long *);
-void DualizeAA(Bmatrix T);
-void EnlargeAAforInteriorFinding(void);
-void WriteSubMatrixOfAA(FILE *,long *, long *, InequalityType);
+void WriteRayRecord(FILE *, colrange, RayRecord *);
+void WriteRayRecord2(FILE *, colrange, RayRecord *);
+double AValue(colrange, Amatrix, double *, rowrange );
+void WriteIncidence(FILE *, rowrange, colrange, RayRecord *);
+void StoreRay1(rowrange, colrange, Amatrix, double *, RayRecord *, rowindex, boolean *);
+void StoreRay2(rowrange, colrange, Amatrix, double *, RayRecord *, rowindex, boolean *, boolean *);
+void AddRay(rowrange, colrange, Amatrix, double *, rowindex);
+void AddArtificialRay(rowrange, colrange, Amatrix, rowindex);
+void ConditionalAddEdge(rowrange, colrange, RayRecord *Ray1, RayRecord *Ray2, 
+    RayRecord *ValidFirstRay, rowrange, rowindex);
+void CreateInitialEdges(rowrange, colrange, rowindex);
+void UpdateEdges(rowrange, colrange, RayRecord *RRbegin, RayRecord *RRend, rowrange, rowindex);
+void FreeDDMemory(rowindex);
+void Normalize(colrange, double *);
+void ZeroIndexSet(rowrange, colrange, Amatrix, double *, rowset);
+void CopyBmatrix(colrange, Bmatrix T, Bmatrix TCOPY);
+void SelectPivot1(rowrange, colrange, Amatrix, HyperplaneOrderType, rowindex,
+    rowrange, rowset, colset, rowrange *, colrange *,boolean *);
+double TableauEntry(rowrange, colrange, Amatrix, Bmatrix T, rowrange, colrange);
+void WriteTableau(FILE *, rowrange, colrange, Amatrix, Bmatrix T,InequalityType);
+void SelectPivot2(rowrange, colrange, Amatrix, Bmatrix T, HyperplaneOrderType, rowindex,
+    rowrange, rowset, colset, rowrange *, colrange *,boolean *);
+void GausianColumnPivot1(rowrange, colrange, Amatrix, rowrange, colrange,rowrange);
+void GausianColumnPivot2(rowrange, colrange, Amatrix, Bmatrix,  rowrange, colrange);
+void InitializeBmatrix(colrange, Bmatrix T);
+void SetToIdentity(colrange, Bmatrix T);
+void free_Bmatrix(colrange, Bmatrix T);
+void WriteBmatrix(FILE *, colrange, Bmatrix T);
+void ReduceA(rowrange *, colrange *, Amatrix, rowset, colset);
+void DualizeA(rowrange *, colrange *, Amatrix, Bmatrix);
+void EnlargeAforInteriorFinding(rowrange *, colrange *, Amatrix);
+void WriteSubMatrixOfA(FILE *, rowrange, colrange, Amatrix, rowset, colset, InequalityType);
 void WriteAmatrix(FILE *, Amatrix, long, long, InequalityType);
-void ComputeRank(Amatrix, long *, long *);
-void ComputeBInverse(Amatrix, long, Bmatrix InvA1, long *);
-void FindBasis(Amatrix, HyperplaneOrderType, long *, long *,
-   Bmatrix BasisInverse, long *);
-void SelectCrissCrossPivot(Amatrix, Bmatrix T,
+void ComputeRank(rowrange, colrange, Amatrix, rowset, rowindex, long *);
+void ComputeBInverse(rowrange, colrange, Amatrix, long, rowindex, Bmatrix InvA1, long *);
+void FindBasis(rowrange, colrange, Amatrix, HyperplaneOrderType, rowindex,rowset,colindex,
+    Bmatrix, long *rank);
+void SelectCrissCrossPivot(rowrange, colrange, Amatrix, Bmatrix T,
   long bflag[], rowrange,colrange,rowrange *,colrange *,
-  boolean *, LPStatusType *);
-void CrissCrossMinimize(Amatrix,Bmatrix BasisInverse,
-  rowrange, colrange, 
-  LPStatusType *, double *optvalue, Arow, Arow, colindex,
-  rowrange *, colrange *, long *);
-void CrissCrossMaximize(Amatrix,Bmatrix BasisInverse,
-  rowrange, colrange, 
-  LPStatusType *, double *optvalue, Arow, Arow, colindex,
-  rowrange *, colrange *, long *);
-void WriteLPResult(FILE *, LPStatusType, double, 
-  Arow, Arow, colindex, rowrange, colrange, long);
-void FindInitialRays(rowset, Bmatrix, colindex, boolean *);
-void CheckAdjacency1(RayRecord **, RayRecord **,boolean *);
-void CheckAdjacency2(RayRecord **, RayRecord **,boolean *);
-void CheckEquality(RayRecord **, RayRecord **, boolean *);
-void Eliminate(RayRecord **);
-void CreateNewRay(RayRecord *, RayRecord *, rowrange);
-void EvaluateARay1(rowrange);
-void EvaluateARay2(rowrange);
-void FeasibilityIndices(long *, long *, rowrange);
+  boolean *, dp_LPStatusType *);
+void SelectDualSimplexPivot(rowrange, colrange, boolean, Amatrix, Bmatrix, rowindex,
+    colindex, long *, rowrange, colrange,
+    rowrange *, colrange *, boolean *, dp_LPStatusType *);
+void FindInitialRays(rowrange, colrange, Amatrix, rowindex, rowset, Bmatrix, 
+    colindex, boolean *);
+void CheckAdjacency1(rowrange, colrange, Amatrix, rowindex, RayRecord **, RayRecord **, boolean *);
+void CheckAdjacency2(rowrange, colrange, Amatrix, RayRecord **, RayRecord **, boolean *);
+void CheckEquality(colrange, RayRecord **, RayRecord **, boolean *);
+void Eliminate(colrange, RayRecord **);
+void CreateNewRay(rowrange, colrange, Amatrix, RayRecord *, RayRecord *, rowrange, rowindex);
+void EvaluateARay1(rowrange, colrange n_size, Amatrix);
+void EvaluateARay2(rowrange, colrange n_size, Amatrix);
+void FeasibilityIndices(long *, long *, rowrange, colrange n_size, Amatrix);
 boolean LexSmaller(double *, double *, long);
 boolean LexLarger(double *, double *, long);
 void CopyArow(double *, double *, long);
-void ComputeRowOrderVector(rowindex OV, HyperplaneOrderType ho);
-void UpdateRowOrderVector(rowset PriorityRows);
-void SelectNextHyperplane(HyperplaneOrderType,long *, rowrange *, boolean *);
-void SelectPreorderedNext(long *excluded, rowindex, rowrange *hnext);
-void AddNewHyperplane1(rowrange);
-void AddNewHyperplane2(rowrange);
-void WriteAdjacency(FILE *);
-void WriteAdjacencyDegree(FILE *);
+void ComputeRowOrderVector(rowrange, colrange, Amatrix, rowindex OV, HyperplaneOrderType ho);
+void UpdateRowOrderVector(rowrange, colrange, rowset PriorityRows, rowindex);
+void SelectNextHyperplane(rowrange, colrange, Amatrix, HyperplaneOrderType,
+    rowset, rowrange *, boolean *, rowindex);
+void SelectPreorderedNext(rowrange, colrange, rowset, rowindex, rowrange *hnext);
+void AddNewHyperplane1(rowrange, colrange, Amatrix, rowrange, rowrange iter, rowindex);
+void AddNewHyperplane2(rowrange, colrange, Amatrix, rowrange, rowrange iter, rowindex);
+void WriteAdjacency(FILE *, rowrange, colrange, rowrange, colrange, Amatrix);
+void WriteAdjacencyDegree(FILE *, rowrange, colrange, rowrange, colrange, Amatrix, rowrange);
 void WriteRunningMode(FILE *);
-void WriteRunningMode2(FILE *);
-void WriteCompletionStatus(FILE *);
+void WriteRunningMode2(FILE *, rowrange, colrange);
+void WriteCompletionStatus(FILE *,  rowrange, colrange, rowrange);
 void WriteTimes(FILE *);
 void WriteProgramDescription(FILE *);
-void WriteSolvedProblem(FILE *);
-void InitialWriting(void);
-void WriteDDResult(void);
+void WriteSolvedProblem(FILE *, rowrange m_input, colrange n_input, 
+    rowrange m_size, colrange n_size, Amatrix);
+void InitialWriting(rowrange, colrange, rowrange, colrange);
+void WriteDDResult(rowrange, colrange, rowrange, colrange, Amatrix, rowrange);
 void WriteErrorMessages(FILE *);
-void WriteDecompResult(void);
-void WriteProjResult(long *);
+void WriteDecompResult(rowrange, colrange, rowrange, colrange, rowrange iter);
+void WriteProjResult(rowrange, colrange, rowrange, colrange, Amatrix, long *, rowrange iter);
 void WriteHeading(void);
 
 /* end of cdd.h */

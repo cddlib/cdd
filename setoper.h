@@ -3,24 +3,17 @@
 /* setoper.c: 
  * A set operation library 
  * created by Komei Fukuda, Nov.14, 1993
- * last modified on March 16, 1995
+ * last modified on August 18, 1996
  */
 
-#define SETBITS 32       /* Important Constant: Number of bits in a long integer */
 #include <stdio.h>
 #include <stdlib.h>
 
-typedef long *set_type;  /* set type definition */
-
-/* Definitions for optimized set_card function 
-   by David Bremner bremner@cs.mcgill.ca  
- */
+typedef unsigned long *set_type;   /* set type definition */
 
 typedef unsigned char set_card_lut_t;
 
-#define LUTBLOCKS(set) (((set[0]-1)/SETBITS+1)*(sizeof(long)/sizeof(set_card_lut_t)))
-
-long set_blocks(long len);
+unsigned long set_blocks(long len);
 void set_initialize(set_type *setp,long len);
 void set_free(set_type set);
 void set_emptyset(set_type set);

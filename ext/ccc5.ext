@@ -1,56 +1,24 @@
-* cdd: Double Description Method C-Code:Version C0.56 (August 7, 1995)
-* Copyright (C) 1995, Komei Fukuda, fukuda@ifor.math.ethz.ch
-*Input File:ccc5.ine   (  15  x   11)
-*HyperplaneOrder: LexMin
-*Degeneracy preknowledge for computation: None (possible degeneracy)
-*Hull computation is chosen.
-*Computation starts     at Tue Aug 29 15:15:33 1995
-*            terminates at Tue Aug 29 15:15:33 1995
-*Total processor time = 0 seconds
-*                     = 0 hour 0 min 0 sec
-*Since hull computation is chosen, the output is a minimal inequality system
-*FINAL RESULT:
-*Number of Facets =      40
+file name: ccc5.ext
+Complete cut cone on 5 vertices
+The number of facets is 40.
 begin
-       40     11    real
-  0  0  0  1  1  0  0  0  0  0 -1
-  0  1  0  0  1  0  0 -1  0  0  0
-  0  0  1  0  1  0  0  0  0 -1  0
-  0 -1  1  1  1  1  1  1 -1 -1 -1
-  0  1 -1  1  1  1 -1 -1  1  1 -1
-  0  1  1 -1  1 -1  1 -1  1 -1  1
-  0  1  1  0  0 -1  0  0  0  0  0
-  0  1  1  1 -1 -1 -1  1 -1  1  1
-  0  1  0  1  0  0 -1  0  0  0  0
-  0  0  1  1  0  0  0  0 -1  0  0
-  0  1  1 -1 -1 -1  1  1  1  1 -1
-  0  1 -1  1 -1  1 -1  1  1 -1  1
-  0 -1  1  1 -1  1  1 -1 -1  1  1
-  0  1 -1 -1  1  1  1 -1 -1  1  1
-  0 -1  1 -1  1  1 -1  1  1 -1  1
-  0 -1 -1  1  1 -1  1  1  1  1 -1
-  0  0  0  0  0  0 -1  1  0  0  1
-  0  0  0  0  0  0  0  0 -1  1  1
-  0  0  0  1 -1  0  0  0  0  0  1
-  0  0  0  0  0 -1  0  1  0  1  0
-  0  0  1  0 -1  0  0  0  0  1  0
-  0  1  0  0 -1  0  0  1  0  0  0
-  0  1  0 -1  0  0  1  0  0  0  0
-  0  0  1 -1  0  0  0  0  1  0  0
-  0  0  0  0  0 -1  1  0  1  0  0
-  0  1 -1  0  0  1  0  0  0  0  0
-  0  0  0  0  0  1  1  0 -1  0  0
-  0  0  0  0  0  1 -1  0  1  0  0
-  0 -1  1  0  0  1  0  0  0  0  0
-  0  0 -1  1  0  0  0  0  1  0  0
-  0 -1  0  1  0  0  1  0  0  0  0
-  0  0  0 -1  1  0  0  0  0  0  1
-  0  0  0  0  0  0  0  0  1 -1  1
-  0  0  0  0  0  0  1 -1  0  0  1
-  0  0  0  0  0  1  0 -1  0  1  0
-  0  0  0  0  0  0  0  0  1  1 -1
-  0  0 -1  0  1  0  0  0  0  1  0
-  0  0  0  0  0  0  1  1  0  0 -1
-  0  0  0  0  0  1  0  1  0 -1  0
-  0 -1  0  0  1  0  0  1  0  0  0
+  15  11  integer
+0 1 1 1 1 0 0 0 0 0 0
+0 0 1 1 1 1 1 1 0 0 0
+0 1 0 1 1 1 0 0 1 1 0
+0 1 1 0 1 0 1 0 1 0 1
+0 1 1 1 0 0 0 1 0 1 1
+0 0 0 1 1 0 1 1 1 1 0
+0 0 1 0 1 1 0 1 1 0 1
+0 0 1 1 0 1 1 0 0 1 1
+0 1 0 0 1 1 1 0 0 1 1
+0 1 0 1 0 1 0 1 1 0 1
+0 1 1 0 0 0 1 1 1 1 0
+0 0 0 0 1 0 0 1 0 1 1
+0 0 0 1 0 0 1 0 1 0 1
+0 0 1 0 0 1 0 0 1 1 0
+0 1 0 0 0 1 1 1 0 0 0
 end
+hull
+incidence
+adjacency

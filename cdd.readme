@@ -1,4 +1,4 @@
-1995-08-29
+1996-08-27
 -----------------------
 PROGRAM cdd README FILE
 -----------------------
@@ -44,12 +44,16 @@ placed in a newly created sub-directory cdd-*** :
      cdd.c          C main source file
      cddarith.c     C subsource file 
      cddio.c        C subsource file  
-     cdd.h          The header file for cdd.c
+     cdd.h          header file for cdd.c
      cdddef.h       cdd definition file (whose two lines are to be edited by user)
+     dplex.c        dual simplex library
+     dplex.h        header file for dplex
+     dplexdef.h     additional header file for dplex
+     dplex_test.c   sample main program for dplex
      setoper.c      C library for set operation
-     setoper.h      The header file for setoper.c 
-
+     setoper.h      header file for setoper.c 
      cddman.tex     Latex source file of cdd User Manual
+     Makefile       GNU make file
      cddHISTORY     brief description of changes made at each updates
      ine            A subdirectory containing sample input files
      ext            A subdirectory containing sample output files
@@ -68,17 +72,18 @@ for cddman.dvi file, please ask a local system administrator.
 
 For compilation of cdd, simply use the following:
 
-   % gcc -o cdd cdd.c cddarith.c cddio.c setoper.c 
+   % make all
 
-to get an executable file "cdd", where o is the lower letter "oh". 
-For a faster code, compile them with an optimization option as 
+which will generate two executables, cdd and dplex_test.
+If this fails, modify Makefile, or one might want to try:
 
-   % gcc -o cdd -O cdd.c cddarith.c cddio.c setoper.c 
+   % gcc -O -I. -o cdd cdd.c cddarith.c cddio.c dplex.c setoper.c 
+   % gcc -O -I. -o dplex_test dplex_test.c dplex.c setoper.c 
+
+to get an executable files "cdd" and "dplex_test".
 
 In above, gnu C compiler gcc can be replaced by the native C-compiler
-cc of your system if cc supports the modern ANSI C. We have found that
-some cc compilers (such as some C-compiler on SUN workstations)
-do not support it.
+cc of your system if cc supports the modern ANSI C.
 
 There is a supplementary  C program, called domcheck,
 written by Francois Margot of EPFL, which can be used with cdd 

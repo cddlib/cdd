@@ -1,28 +1,17 @@
-* cdd: Double Description Method C-Code:Version C0.56 (August 7, 1995)
-* Copyright (C) 1995, Komei Fukuda, fukuda@ifor.math.ethz.ch
-*Input File:ccc4.ine   (   7  x    7)
-*HyperplaneOrder: LexMin
-*Degeneracy preknowledge for computation: None (possible degeneracy)
-*Hull computation is chosen.
-*Computation starts     at Tue Aug 29 15:15:31 1995
-*            terminates at Tue Aug 29 15:15:31 1995
-*Total processor time = 0 seconds
-*                     = 0 hour 0 min 0 sec
-*Since hull computation is chosen, the output is a minimal inequality system
-*FINAL RESULT:
-*Number of Facets =      12
+file name: ccc4.ext
+Complete cut cone on 4 vertices
+The number of facets is 12.
 begin
-       12      7    real
-  0  0  1  1  0  0 -1
-  0  1  0  1  0 -1  0
-  0  1  1  0 -1  0  0
-  0  1  0 -1  0  1  0
-  0  1 -1  0  1  0  0
-  0  0  0  0  1  1 -1
-  0  0  1 -1  0  0  1
-  0  0  0  0  1 -1  1
-  0 -1  1  0  1  0  0
-  0  0  0  0 -1  1  1
-  0  0 -1  1  0  0  1
-  0 -1  0  1  0  1  0
+    7    7    integer
+ 0  1  1  1  0  0  0 
+ 0  0  1  1  1  1  0 
+ 0  1  0  1  1  0  1 
+ 0  1  1  0  0  1  1 
+ 0  0  0  1  0  1  1 
+ 0  0  1  0  1  0  1 
+ 0  1  0  0  1  1  0
 end
+hull
+incidence
+adjacency
+

@@ -1,6 +1,6 @@
 /* cdd.c: Main program of the sofware cdd
    written by Komei Fukuda, fukuda@ifor.math.ethz.ch
-   Version 0.56, August 7, 1995
+   Version 0.60, August 21, 1996
    Standard ftp site: ifor13.ethz.ch(129.132.154.13), Directory: pub/fukuda/cdd
 */
 
@@ -44,14 +44,10 @@
 /* #include <profile.h>    THINK C PROFILER */
 /* #include <console.h>    THINK C PROFILER */
 
-long minput, ninput;   /*size of input data [b -A] */
-long mm, nn;   /*size of the homogenous system to be solved by dd*/
 long projdim;  /*dimension of orthogonal preprojection */
 colset projvars;   /*set of variables spanning the space of preprojection, 
      i.e. the remaining variables are to be removed*/
 rowset EqualitySet, NonequalitySet, GroundSet, Face, Face1, CheckPoints;
-rowrange Iteration, hh;
-rowindex OrderVector;  /* the permutation vector to store a preordered row indeces */
 rowindex EqualityIndex;  
   /* ith component is 1 if it is equality, -1 if it is strict inequality, 0 otherwise. */
 rowset AddedHyperplanes, WeaklyAddedHyperplanes, InitialHyperplanes;
@@ -60,12 +56,8 @@ long RayCount, FeasibleRayCount, WeaklyFeasibleRayCount,
 long EdgeCount, TotalEdgeCount;
 long count_int=0,count_int_good=0,count_int_bad=0;
 boolean DynamicWriteOn, DynamicRayWriteOn, LogWriteOn, debug;
-Amatrix AA;
-Bmatrix InitialRays;
-colindex InitialRayIndex; /* 0 if the corr. ray is for generator of an extreme line */ 
 colrange RHScol;   /* LP RHS column */
 rowrange OBJrow;   /* LP OBJ row */
-LPStatusType LPStatus;
 Arow LPcost;  /* LP cost vector to be maximized  */
 RayRecord *ArtificialRay, *FirstRay, *LastRay;
 RayRecord *PosHead, *ZeroHead, *NegHead, *PosLast, *ZeroLast, *NegLast;
@@ -83,9 +75,9 @@ boolean RowDecomposition; /* Row decomposition enumeration switch */
 boolean VerifyInput; /* Verification switch for the input data */
 boolean PreOrderedRun; 
   /* TRUE if the rows are ordered before execution & all necessary adjacencies are stored */
-boolean QPivotOn; /* QPivot Switch (TRUE if Q-Pivot scheme of Jack Edmonds is chosen) */
 CompStatusType CompStatus;  /* Computation Status */
 ConversionType Conversion;
+LPsolverType LPsolver;
 IncidenceOutputType IncidenceOutput;
 AdjacencyOutputType AdjacencyOutput;
 ErrorType Error;
@@ -110,15 +102,15 @@ void DefaultOptionSetup(void)
   PreOrderedRun=TRUE;
   VerifyInput=FALSE;
   Conversion = IneToExt;
+  LPsolver = DualSimplex;
     
   IncidenceOutput = IncOff;
   AdjacencyOutput = AdjOff;
   InitBasisAtBottom = FALSE;
-  QPivotOn=FALSE;
 }
 
-void CheckAdjacency1(RayRecord **RP1, RayRecord **RP2,
-			    boolean *adjacent)
+void CheckAdjacency1(rowrange m_size, colrange n_size, Amatrix A, rowindex ordervec,
+    RayRecord **RP1, RayRecord **RP2, boolean *adjacent)
 {
   long rank;
 
@@ -127,7 +119,7 @@ void CheckAdjacency1(RayRecord **RP1, RayRecord **RP2,
   set_int(Face, Face1, AddedHyperplanes);
   if (debug)
     printf("Check adjacency\n");
-  if (set_card(Face)< nn - 2) {
+  if (set_card(Face)< n_size - 2) {
     *adjacent = FALSE;
     return;
   }
@@ -135,14 +127,14 @@ void CheckAdjacency1(RayRecord **RP1, RayRecord **RP2,
   	*adjacent = TRUE;
   	return;
   }
-  ComputeRank(AA,Face,&rank);
-  if (rank < nn - 2){
+  ComputeRank(m_size, n_size, A, Face, ordervec, &rank);
+  if (rank < n_size - 2){
     *adjacent = FALSE;
   }
 }
 
-void CheckAdjacency2(RayRecord **RP1, RayRecord **RP2,
-			    boolean *adjacent)
+void CheckAdjacency2(rowrange m_size, colrange n_size, Amatrix A,
+    RayRecord **RP1, RayRecord **RP2, boolean *adjacent)
 {
   RayRecord *TempRay;
   boolean localdebug=FALSE;
@@ -153,14 +145,14 @@ void CheckAdjacency2(RayRecord **RP1, RayRecord **RP2,
   set_int(Face, Face1, AddedHyperplanes);
   if (localdebug){
     printf("Check adjacency of\n");
-    WriteRayRecord(stdout, *RP1);
-    WriteRayRecord(stdout, *RP2);    
+    WriteRayRecord(stdout, n_size, *RP1);
+    WriteRayRecord(stdout, n_size, *RP2);    
   }
-  if (set_card(Face)< nn - 2) {
+  if (set_card(Face)< n_size - 2) {
     *adjacent = FALSE;
     if (localdebug) {
-      printf("non adjacent: set_card(face) %ld < %ld = nn.\n",
-        set_card(Face),nn);
+      printf("non adjacent: set_card(face) %ld < %ld = n_size.\n",
+        set_card(Face),n_size);
     }
     return;
   }
@@ -178,14 +170,14 @@ void CheckAdjacency2(RayRecord **RP1, RayRecord **RP2,
   }
 }
 
-void Eliminate(RayRecord **Ptr)
+void Eliminate(colrange n_size, RayRecord **Ptr)
 {
   /*eliminate the record pointed by Ptr^.Next*/
   RayRecord *TempPtr;
 
   if (debug) {
     printf("            Delete:");
-    WriteRayRecord(stdout, (*Ptr)->Next);
+    WriteRayRecord(stdout, n_size, (*Ptr)->Next);
   }
   TempPtr = (*Ptr)->Next;
   (*Ptr)->Next = (*Ptr)->Next->Next;
@@ -199,427 +191,7 @@ void Eliminate(RayRecord **Ptr)
   RayCount--; 
 }
 
-
-void SelectNextHyperplane0(long *excluded, rowrange *hnext)
-{
-  /*A natural way to choose the next hyperplane.  Simply the largest index*/
-  long i;
-  boolean determined;
-
-  i = mm;
-  determined = FALSE;
-  do {
-    if (set_member(i, excluded))
-      i--;
-    else
-      determined = TRUE;
-  } while (!determined && i>=1);
-  if (determined) 
-    *hnext = i;
-  else
-    *hnext = 0;
-}
-
-void SelectNextHyperplane1(long *excluded, rowrange *hnext)
-{
-  /*Natural way to choose the next hyperplane.  Simply the least index*/
-  long i;
-  boolean determined;
-
-  i = 1;
-  determined = FALSE;
-  do {
-    if (set_member(i, excluded))
-      i++;
-    else
-      determined = TRUE;
-  } while (!determined && i<=mm);
-  if (determined) 
-    *hnext = i;
-  else 
-    *hnext=0;
-}
-
-void SelectNextHyperplane2(long *excluded, rowrange *hnext)
-{
-  /*Choose the next hyperplane with maximum infeasibility*/
-  long i, fea, inf, infmin, fi=0;   /*feasibility and infeasibility numbers*/
-
-  infmin = RayCount + 1;
-  for (i = 1; i <= mm; i++) {
-    if (!set_member(i, excluded)) {
-      FeasibilityIndices(&fea, &inf, i);
-      if (inf < infmin) {
-	infmin = inf;
-	fi = fea;
-	*hnext = i;
-      }
-    }
-  }
-  if (DynamicWriteOn) {
-    printf("*infeasible rays (min) =%5ld, #feas rays =%5ld\n", infmin, fi);
-    fprintf(writing, 
-      "*infeasible rays (min) =%5ld, #feas rays =%5ld\n", infmin, fi);
-  }
-}
-
-void SelectNextHyperplane3(long *excluded, rowrange *hnext)
-{
-  /*Choose the next hyperplane with maximum infeasibility*/
-  long i, fea, inf, infmax, fi=0;   /*feasibility and infeasibility numbers*/
-
-  infmax = -1;
-  for (i = 1; i <= mm; i++) {
-    if (!set_member(i, excluded)) {
-      FeasibilityIndices(&fea, &inf, i);
-      if (inf > infmax) {
-	infmax = inf;
-	fi = fea;
-	*hnext = i;
-      }
-    }
-  }
-  if (DynamicWriteOn) {
-    printf("*infeasible rays (max) =%5ld, #feas rays =%5ld\n", infmax, fi);
-    fprintf(writing,
-      "*infeasible rays (max) =%5ld, #feas rays =%5ld\n", infmax, fi);
-  }
-}
-
-void SelectNextHyperplane4(long *excluded, rowrange *hnext)
-{
-  /*Choose the next hyperplane with the most unbalanced cut*/
-  long i, fea, inf, max, tmax, fi=0, infi=0;
-      /*feasibility and infeasibility numbers*/
-
-  max = -1;
-  for (i = 1; i <= mm; i++) {
-    if (!set_member(i, excluded)) {
-      FeasibilityIndices(&fea, &inf, i);
-      if (fea <= inf)
-        tmax = inf;
-      else
-        tmax = fea;
-      if (tmax > max) {
-        max = tmax;
-        fi = fea;
-        infi = inf;
-        *hnext = i;
-      }
-    }
-  }
-  if (!DynamicWriteOn)
-    return;
-  if (max == fi) {
-    printf("*infeasible rays (min) =%5ld, #feas rays =%5ld\n", infi, fi);
-    fprintf(writing, "*infeasible rays (min) =%5ld, #feas rays =%5ld\n",
-	    infi, fi);
-  } else {
-    printf("*infeasible rays (max) =%5ld, #feas rays =%5ld\n", infi, fi);
-    fprintf(writing, "*infeasible rays (max) =%5ld, #feas rays =%5ld\n",
-	    infi, fi);
-  }
-}
-
-void SelectNextHyperplane5(long *excluded, rowrange *hnext)
-{
-  /*Choose the next hyperplane which is lexico-min*/
-  long i, minindex;
-  double *v1, *v2;
-
-  minindex = 0;
-  v1 = NULL;
-  for (i = 1; i <= mm; i++) {
-    if (!set_member(i, excluded)) {
-	  v2 = AA[i - 1];
-      if (minindex == 0) {
-	    minindex = i;
-	    v1=v2;
-      } else if (LexSmaller(v2,v1,nn)) {
-        minindex = i;
-	    v1=v2;
-      }
-    }
-  }
-  *hnext = minindex;
-}
-
-
-void SelectNextHyperplane6(long *excluded, rowrange *hnext)
-{
-  /*Choose the next hyperplane which is lexico-max*/
-  long i, maxindex;
-  double *v1, *v2;
-
-  maxindex = 0;
-  v1 = NULL;
-  for (i = 1; i <= mm; i++) {
-    if (!set_member(i, excluded)) {
-      v2= AA[i - 1];
-      if (maxindex == 0) {
-        maxindex = i;
-        v1=v2;
-      } else if (LexLarger(v2, v1, nn)) {
-        maxindex = i;
-        v1=v2;
-     }
-    }
-  }
-  *hnext = maxindex;
-}
-
-long Partition(rowindex OV, long p, long r, Amatrix A, long nmax)
-{
-  double *x;
-  long i,j,ovi;
-  
-  x=A[OV[p]-1];
-  i=p-1;
-  j=r+1;
-  while (TRUE){
-    do{
-      j--;
-    } while (LexLarger(A[OV[j]-1],x,nmax));
-    do{
-      i++;
-    } while (LexSmaller(A[OV[i]-1],x,nmax));
-    if (i<j){
-      ovi=OV[i];
-      OV[i]=OV[j];
-      OV[j]=ovi;
-    }
-    else{
-      return j;
-    }
-  }
-}
-
-void QuickSort(rowindex OV, long p, long r, Amatrix A, long nmax)
-{
-  long q;
-  
-  if (p < r){
-    q = Partition(OV, p, r, A, nmax);
-    QuickSort(OV, p, q, A, nmax);
-    QuickSort(OV, q+1, r, A, nmax);
-  }
-}
-
-void LineShellingOrder(rowindex OV, double *z, double *d)
-/* find the shelling ordering induced by a point 
-   z (interior point, i.e. A z > 0) and a direction vector  d */
-{
-  long i,j;
-  double temp1,temp2,infinity=10.0e+20;
-  static double *beta;
-  static long mlast=0;
-  boolean localdebug=FALSE;
-  
-  if ( mlast<mm ){
-    if (beta!=NULL) free(beta);
-    beta=(double *)calloc(mm, sizeof *beta);
-    /* initialize only for the first time or when last mm is smaller */
-    mlast=mm;
-  }
-  for (i=1; i<= mm; i++) beta[i-1]=AA[i-1][0]; /* store the first column in beta */
-  for (i=1; i<= mm; i++){
-    temp1 = 0.0;
-    temp2 = 0.0;
-    for (j = 1; j <= nn; j++){
-      temp1 += AA[i - 1][j-1] * z[j-1];
-      temp2 += AA[i - 1][j-1] * d[j-1];
-    }
-    if (abs(temp1)>zero) AA[i-1][0]=temp2/temp1;  
-    else if (temp1*temp2 > 0) AA[i-1][0]= infinity;
-    else AA[i-1][0]= -infinity;
-     /* use the first column of AA tentatively */
-  }
-  if (localdebug) 
-    for (i=1; i<= mm; i++){
-      printf("set AA[%ld] = %g\n", i, AA[i-1][0]);
-    }
-  QuickSort(OV, 1, mm, AA, 1);
-  for (i=1; i<= mm; i++) {
-    AA[i-1][0]=beta[i-1]; 
-     /* restore the first column of AA */ 
-    if (localdebug) printf("restore AA[%ld] with %g\n", i, AA[i-1][0]);
-  }
-}
-
-
-#ifndef RAND_MAX 
-#define RAND_MAX 32767 
-#endif
-
-void RandomPermutation(rowindex OV, long t, unsigned int seed)
-{
-  long k,j,ovj;
-  double u,xk,r,rand_max=(double) RAND_MAX;
-  boolean localdebug=FALSE;
-
-  srand(seed);
-  for (j=t; j>1 ; j--) {
-    r=rand();
-    u=r/rand_max;
-    xk=j*u +1;
-    k=xk;
-    if (localdebug) printf("u=%g, k=%ld, r=%g, randmax= %g\n",u,k,r,rand_max);
-    ovj=OV[j];
-    OV[j]=OV[k];
-    OV[k]=ovj;
-    if (localdebug) printf("row %ld is exchanged with %ld\n",j,k); 
-  }
-}
-
-void ComputeRowOrderVector(rowindex OV, HyperplaneOrderType ho)
-{
-  long i,itemp,j;
-  Arow zvec, dvec;
-  
-  OV[0]=0;
-  switch (ho){
-  case MaxIndex:
-    for(i=1; i<=mm; i++) OV[i]=mm-i+1;
-    break;
-
-  case MinIndex: 
-    for(i=1; i<=mm; i++) OV[i]=i;
-    break;
-
-  case LexMin: case MinCutoff: case MixCutoff: case MaxCutoff:
-    for(i=1; i<=mm; i++) OV[i]=i;
-    QuickSort(OV, 1, mm, AA, nn);
-    break;
-
-  case LexMax:
-    for(i=1; i<=mm; i++) OV[i]=i;
-    QuickSort(OV, 1, mm, AA, nn);
-    for(i=1; i<=mm/2;i++){   /* just reverse the order */
-      itemp=OV[i];
-      OV[i]=OV[mm-i+1];
-      OV[mm-i+1]=itemp;
-    }
-    break;
-
-  case RandomRow:
-    for(i=1; i<=mm; i++) OV[i]=i;
-    if (rseed<=0) rseed=1;
-    RandomPermutation(OV, mm, rseed);
-    break;
-
-  case LineShelling:
-    for(i=1; i<=mm; i++) OV[i]=i;
-    zvec[0]=1;
-    dvec[0]=0;
-    if (rseed<=0) rseed=1;
-    srand(rseed);
-    for(j=2; j<=nn; j++){
-      zvec[j-1]=0;
-      dvec[j-1]=nn-j+1;
-      /* dvec[j-1]=rand(); */
-    }
-    LineShellingOrder(OV, zvec, dvec);
-    break;
-  }
-}
-
-void UpdateRowOrderVector(long *PriorityRows)
-/* Update the RowOrder vector to shift selected rows
-in highest order.
-*/
-{
-  rowrange i,j,k,j1=0,oj=0;
-  long rr;
-  boolean found, localdebug=FALSE;
-  
-  if (debug) localdebug=TRUE;
-  found=TRUE;
-  rr=set_card(PriorityRows);
-  if (localdebug) set_write(PriorityRows);
-  for (i=1; i<=rr; i++){
-    found=FALSE;
-    for (j=i; j<=mm && !found; j++){
-      oj=OrderVector[j];
-      if (set_member(oj, PriorityRows)){
-        found=TRUE;
-        if (localdebug) printf("%ldth in sorted list (row %ld) is in PriorityRows\n", j, oj);
-        j1=j;
-      }
-    }
-    if (found){
-      if (j1>i) {
-        /* shift everything lower: OV[i]->OV[i+1]..OV[j1-1]->OV[j1] */
-        for (k=j1; k>=i; k--) OrderVector[k]=OrderVector[k-1];
-        OrderVector[i]=oj;
-        if (localdebug){
-          printf("OrderVector updated to:\n");
-          for (j = 1; j <= mm; j++) printf(" %2ld", OrderVector[j]);
-          printf("\n");
-        }
-      }
-    } else {
-      printf("UpdateRowOrder: Error.\n");
-      goto _L99;
-    }
-  }
-_L99:;
-}
-
-void SelectPreorderedNext(long *excluded, rowindex OV, rowrange *hnext)
-{
-  rowrange i,k;
-  
-  *hnext=0;
-  for (i=1; i<=mm && *hnext==0; i++){
-    k=OV[i];
-    if (!set_member(k, excluded)) *hnext=k ;
-  }
-}
-
-void SelectNextHyperplane(HyperplaneOrderType ho, 
-         long *excluded, rowrange *hh, boolean *RefreshOrderVector)
-{
-  if (PreOrderedRun){
-    if (debug) {
-      printf("debug SelectNextHyperplane: Use PreorderNext\n");
-    }
-    SelectPreorderedNext(excluded, OrderVector, hh);
-  }
-  else {
-    if (debug) {
-      printf("debug SelectNextHyperplane: Use DynamicOrderedNext\n");
-    }
-
-    switch (ho) {
-
-    case MaxIndex:
-      SelectNextHyperplane0(excluded,hh);
-      break;
-
-    case MinIndex:
-      SelectNextHyperplane1(excluded,hh);
-      break;
-
-    case MinCutoff:
-      SelectNextHyperplane2(excluded,hh);
-      break;
-
-    case MaxCutoff:
-      SelectNextHyperplane3(excluded, hh);
-      break;
-
-    case MixCutoff:
-      SelectNextHyperplane4(excluded, hh);
-      break;
-
-    default:
-      SelectNextHyperplane0(excluded,hh);
-      break;
-    }
-  }
-}
-
-void CompileDecompResult(void)
+void CompileDecompResult(rowrange m_size, colrange n_size, Amatrix A, rowindex ordervec)
 {
   long i,j,k;
   double value;
@@ -629,19 +201,19 @@ void CompileDecompResult(void)
   static long mprev=0;
   boolean localdebug=FALSE;
   
-  if (mprev<mm){
-    vec=(double *)calloc(mm, sizeof *vec);
+  if (mprev<m_size){
+    vec=(double *)calloc(m_size, sizeof *vec);
     /* initialize only for the first time or when a larger space is needed */
-    mprev=mm;
+    mprev=m_size;
     if (localdebug) printf("mprev is replaced with  = %ld\n", mprev);
   }
-  AddArtificialRay();
+  AddArtificialRay(m_size, n_size, A, ordervec);
   if (writing_dex != NULL){
     fclose(writing_dex);
     if (DynamicWriteOn) printf("closing the file %s\n",dexfile);
   }
   reading_dex = fopen(dexfile, "r");
-  for (i=1; i<=mm-nn+2;i++){
+  for (i=1; i<=m_size-n_size+2;i++){
     found=FALSE;
     while (!found)
     {
@@ -666,28 +238,27 @@ void CompileDecompResult(void)
         if (localdebug) WriteReal(stdout, value);
       }
       if (localdebug) printf("\n");
-      AddRay(vec);
+      AddRay(m_size, n_size, A, vec, ordervec);
     }
   }
 _L99:;
 }
 
 
-
-void DDInit(void)
+void DDInit(rowrange m_size, colrange n_size, Amatrix A, Bmatrix InitialRays,
+    rowindex ordervec)
 {
   Error=None;
   CompStatus=InProgress;
-  SetInequalitySets(EqualityIndex);
-  set_initialize(&InitialHyperplanes,mm);
-  set_initialize(&AddedHyperplanes,mm);
-  set_initialize(&WeaklyAddedHyperplanes,mm);
-  set_initialize(&Face, mm);   /* used in CheckAdjacency  */
-  set_initialize(&Face1, mm);  /* used in CheckAdjacency  */
-  OrderVector=(long *)calloc(mm+1, sizeof *OrderVector);
-  ComputeRowOrderVector(OrderVector, HyperplaneOrder);
+  SetInequalitySets(m_size, EqualityIndex);
+  set_initialize(&InitialHyperplanes,m_size);
+  set_initialize(&AddedHyperplanes,m_size);
+  set_initialize(&WeaklyAddedHyperplanes,m_size);
+  set_initialize(&Face, m_size);   /* used in CheckAdjacency  */
+  set_initialize(&Face1, m_size);  /* used in CheckAdjacency  */
+  ComputeRowOrderVector(m_size, n_size, A, ordervec, HyperplaneOrder);
   RecomputeRowOrder=FALSE;
-  InitializeBmatrix(InitialRays);
+  InitializeBmatrix(n_size, InitialRays);
   RayCount = 0;
   TotalRayCount = 0;
   FeasibleRayCount = 0;
@@ -697,17 +268,21 @@ void DDInit(void)
   TotalEdgeCount=0; /* active edge count */
 }
 
-void DDMain(void)
+void DDMain(rowrange m_input, colrange n_input, 
+    rowrange m_size, colrange n_size, Amatrix A, rowrange *Iteration, rowindex ordervec)
 {
-  Iteration = nn + 1;
-  while (Iteration <= mm) {
-    SelectNextHyperplane(HyperplaneOrder, WeaklyAddedHyperplanes, &hh, &RecomputeRowOrder);
+  rowrange hh;
+
+  *Iteration = n_size + 1;
+  while (*Iteration <= m_size) {
+    SelectNextHyperplane(m_size, n_size, A, HyperplaneOrder, 
+       WeaklyAddedHyperplanes, &hh, &RecomputeRowOrder, ordervec);
     if (DynamicWriteOn) {
       fprintf(writing,
 	     "*----------  Iteration =%3ld :   add  row # %3ld ----------\n",
-	      Iteration, hh);
+	      *Iteration, hh);
       printf("*----------  Iteration =%3ld :   add  row # %3ld ----------\n",
-	     Iteration, hh);
+	     *Iteration, hh);
     }
     if (set_member(hh,NonequalitySet)){  /* Skip the row hh */
       if (DynamicWriteOn) {
@@ -717,22 +292,22 @@ void DDMain(void)
       set_addelem(WeaklyAddedHyperplanes, hh);
     } else {
       if (PreOrderedRun)
-        AddNewHyperplane2(hh);
+        AddNewHyperplane2(m_size, n_size, A, hh, *Iteration, ordervec);
       else
-        AddNewHyperplane1(hh);
+        AddNewHyperplane1(m_size, n_size, A, hh, *Iteration, ordervec);
       set_addelem(AddedHyperplanes, hh);
       set_addelem(WeaklyAddedHyperplanes, hh);
     }
     if (LogWriteOn)
       fprintf(writing_log, "%3ld %5ld %6ld %6ld %6ld\n",
-        Iteration, hh, TotalRayCount, RayCount, FeasibleRayCount);
-    if (AdjacencyOutput==AdjacencyDegree && set_member(Iteration,CheckPoints))
-      WriteAdjacencyDegree(writing_adj);
+        *Iteration, hh, TotalRayCount, RayCount, FeasibleRayCount);
+    if (AdjacencyOutput==AdjacencyDegree && set_member(*Iteration,CheckPoints))
+      WriteAdjacencyDegree(writing_adj, m_input, n_input, m_size, n_size, A, *Iteration);
     if (CompStatus==AllFound||CompStatus==RegionEmpty) {
       set_addelem(AddedHyperplanes, hh);
       goto _L99;
     }
-    Iteration++;
+    (*Iteration)++;
   }
   _L99:;
 }
@@ -760,7 +335,8 @@ void Initialization(int ARGC, char *ARGV[])
   }
 }
 
-void InitialDataSetup(void)
+void InitialDataSetup(rowrange m_size, colrange n_size, 
+    Amatrix A, Bmatrix InitialRays, colindex InitialRayIndex, rowindex ordervec)
 {
   long j, r;
   Arow Vector1,Vector2;
@@ -770,87 +346,106 @@ void InitialDataSetup(void)
   ArtificialRay = NULL;
   FirstRay = NULL;
   LastRay = NULL;
-  set_initialize(&ZSet,mm);
-  AddArtificialRay();
-  Iteration = nn;   /*Initially,we have already  nn  hyperplanes */
+  set_initialize(&ZSet,m_size);
+  AddArtificialRay(m_size, n_size, A, ordervec);
   set_copy(AddedHyperplanes, InitialHyperplanes);
   set_copy(WeaklyAddedHyperplanes, InitialHyperplanes);
-  UpdateRowOrderVector(InitialHyperplanes);
-  for (r = 1; r <= nn; r++) {
-    for (j = 0; j < nn; j++){
+  UpdateRowOrderVector(m_size, n_size, InitialHyperplanes, ordervec);
+  for (r = 1; r <= n_size; r++) {
+    for (j = 0; j < n_size; j++){
       Vector1[j] = InitialRays[j][r-1];
       Vector2[j] = -InitialRays[j][r-1];
     }
-    Normalize(Vector1);
-    Normalize(Vector2);
-    ZeroIndexSet(Vector1, ZSet);
+    Normalize(n_size, Vector1);
+    Normalize(n_size, Vector2);
+    ZeroIndexSet(m_size, n_size, A, Vector1, ZSet);
     if (set_subset(EqualitySet, ZSet)){
       if (debug) {
         printf("add an initial ray with zero set:");
         set_write(ZSet);
       }
-      AddRay(Vector1);
+      AddRay(m_size, n_size, A, Vector1, ordervec);
       if (InitialRayIndex[r]==0) {
-        AddRay(Vector2);
+        AddRay(m_size, n_size, A, Vector2, ordervec);
         if (debug) {
           printf("and add its negative also.\n");
         }
       }
     }
   }
-  CreateInitialEdges();
+  CreateInitialEdges(m_size, n_size, ordervec);
   set_free(ZSet);
 }
 
-void DDEnumerate(void)
+void DDEnumerate(rowrange m_input, colrange n_input, 
+    rowrange m_size, colrange n_size, Amatrix A)
 {
+  Bmatrix InitRays;
+  colindex InitRayIndex; /* 0 if the corr. ray is for generator of an extreme line */ 
+  rowrange Iteration=0;
+  rowindex OrderVector;
+  
   if (IncidenceOutput == IncSet && writing_icd == NULL)
     SetWriteFile(&writing_icd, icdfile, 'i', "incidence");
   if (AdjacencyOutput != AdjOff && writing_adj == NULL)
     SetWriteFile(&writing_adj, adjfile, 'a', "adjacency");
   if (LogWriteOn && writing_log == NULL)
     SetWriteFile(&writing_log, logfile, 'l', "log");
-  DDInit();
+  OrderVector=(long *)calloc(m_size+1, sizeof *OrderVector);
+  DDInit(m_size, n_size, A, InitRays, OrderVector);
   time(&starttime);
-  FindInitialRays(InitialHyperplanes, InitialRays, InitialRayIndex, &found);
+  FindInitialRays(m_size, n_size, A, OrderVector, 
+    InitialHyperplanes, InitRays, InitRayIndex, &found);
   if (found) {
-    InitialDataSetup();
-    InitialWriting();
-    DDMain();
-    WriteDDResult();
-    FreeDDMemory();
+    InitialDataSetup(m_size, n_size, A, InitRays, InitRayIndex, OrderVector);
+    InitialWriting(m_input, n_input, m_size, n_size);
+    DDMain(m_input, n_input, m_size, n_size, A, &Iteration, OrderVector);
+    WriteDDResult(m_input, n_input, m_size, n_size, A, Iteration);
+    FreeDDMemory(OrderVector);
   } else {
-    WriteDDResult();
+    WriteDDResult(m_input, n_input, m_size, n_size, A, Iteration);
     WriteErrorMessages(stdout);
     WriteErrorMessages(writing);
   }
 }
 
-void DecompositionCore(void)
+void DecompositionCore(rowrange m_input, colrange n_input, 
+  rowrange m_size, colrange n_size, 
+  Amatrix A, Bmatrix InitRays, colindex InitRayIndex, 
+  rowrange *Iteration)
 {
-  DDInit();
+  rowindex OrderVector;
+
+  OrderVector=(long *)calloc(m_size+1, sizeof *OrderVector);  
+  DDInit(m_size, n_size, A, InitRays, OrderVector);
   time(&starttime);
-  FindInitialRays(InitialHyperplanes, InitialRays, InitialRayIndex, &found);
+  FindInitialRays(m_size, n_size, A, OrderVector, InitialHyperplanes, 
+    InitRays, InitRayIndex, &found);
   if (found) {
-    InitialDataSetup();
-    InitialWriting();
-    DDMain();
+    InitialDataSetup(m_size, n_size, A, InitRays, InitRayIndex, OrderVector);
+    InitialWriting(m_input, n_input, m_size, n_size);
+    DDMain(m_input, n_input, m_size, n_size, A, Iteration, OrderVector);
     time(&endtime);
-    WriteDecompResult();
-    FreeDDMemory();
+    WriteDecompResult(m_input, n_input, m_size, n_size, *Iteration);
+    FreeDDMemory(OrderVector);
   } else {
     time(&endtime);
-    WriteDecompResult();
+    WriteDecompResult(m_input, n_input, m_size, n_size, *Iteration);
     WriteErrorMessages(stdout);
     WriteErrorMessages(writing);
   }
 }
 
-void DDRowDecomposition(void)
+void DDRowDecomposition(rowrange m_input, colrange n_input, 
+    rowrange m_size, colrange n_size, Amatrix A)
 {
   rowrange i,k;
   long FeasibleRaySum=0;
   time_t starttime_save;
+  Bmatrix InitRays;
+  colindex InitRayIndex; /* 0 if the corr. ray is for generator of an extreme line */ 
+  rowrange Iteration;
+  rowindex OrderVector;
   
   time(&starttime_save);
   if (RowDecomposition && writing_dex == NULL)
@@ -863,41 +458,43 @@ void DDRowDecomposition(void)
     SetWriteFile(&writing_log, logfile, 'l', "log");
   RestrictedEnumeration=TRUE;
   RelaxedEnumeration=TRUE;
-  for (i = 0; i <= mm; i++) EqualityIndex[i]=0;
-  for (k = 1; k <= mm-nn+2; k++){
+  for (i = 0; i <= m_size; i++) EqualityIndex[i]=0;
+  for (k = 1; k <= m_size-n_size+2; k++){
     EqualityIndex[k]=1;   /* Equality for k-th inequality */
     if (k>=2) EqualityIndex[k-1]=-1;  /* Strict inequality for 1,2,...,(k-1)st inequalities */
     if (DynamicWriteOn) {
-      fprintf(writing, "* Decomposition problem number =%3ld(/%3ld)\n", k, mm-nn+2);
-      fprintf(stdout, "* Decomposition problem number =%3ld(/%3ld)\n", k, mm-nn+2);
+      fprintf(writing, "* Decomposition problem number =%3ld(/%3ld)\n", k, m_size-n_size+2);
+      fprintf(stdout, "* Decomposition problem number =%3ld(/%3ld)\n", k, m_size-n_size+2);
     }
-    DecompositionCore();
+    DecompositionCore(m_input, n_input, m_size, n_size, A, InitRays, InitRayIndex, &Iteration);
     FeasibleRaySum=FeasibleRaySum+FeasibleRayCount;
   }
   switch (Inequality) {
   case ZeroRHS:
-    fprintf(writing_dex, "*Total outputs = %8ld  %5ld    real\n",FeasibleRaySum, nn + 1);
-    fprintf(stdout, "*Total outputs = %8ld  %5ld    real\n",FeasibleRaySum, nn + 1);
+    fprintf(writing_dex, "*Total outputs = %8ld  %5ld    real\n",FeasibleRaySum, n_size + 1);
+    fprintf(stdout, "*Total outputs = %8ld  %5ld    real\n",FeasibleRaySum, n_size + 1);
     break;
   case NonzeroRHS:
-    fprintf(writing_dex, "*Total outputs = %8ld  %5ld    real\n", FeasibleRaySum, nn);
-    fprintf(stdout, "*Total outputs = %8ld  %5ld    real\n", FeasibleRaySum, nn);
+    fprintf(writing_dex, "*Total outputs = %8ld  %5ld    real\n", FeasibleRaySum, n_size);
+    fprintf(stdout, "*Total outputs = %8ld  %5ld    real\n", FeasibleRaySum, n_size);
     break;
   }
-  DDInit();
-  for (i = 0; i <= mm; i++) {
+  OrderVector=(long *)calloc(m_size+1, sizeof *OrderVector);
+  DDInit(m_size, n_size, A, InitRays, OrderVector);
+  for (i = 0; i <= m_size; i++) {
     EqualityIndex[i]=0;
     set_addelem(AddedHyperplanes,i);
   }
-  CompileDecompResult();
+  CompileDecompResult(m_size, n_size, A, OrderVector);
   starttime=starttime_save;
   RestrictedEnumeration=FALSE;
   RelaxedEnumeration=FALSE;
-  WriteDDResult();
-  FreeDDMemory();
+  WriteDDResult(m_input, n_input, m_size, n_size, A, Iteration);
+  FreeDDMemory(OrderVector);
 }
 
-void PreProjection(void)
+void PreProjection(rowrange m_input, colrange n_input,
+    rowrange m_size, colrange n_size, Amatrix A)
 {
   rowset subrows1,subrows2,DBrows;
   colset subcols1,subcols2;  /* subcols1:projvars,  subcols2:rest */
@@ -906,7 +503,11 @@ void PreProjection(void)
   colindex pivrow;
   Bmatrix DBinv;  /* dual basis matrix inverse */
   long DBrank;
-  
+  Bmatrix InitRays;
+  colindex InitRayIndex; /* 0 if the corr. ray is for generator of an extreme line */ 
+  rowrange Iteration;
+  rowindex OrderVector;
+
   time(&starttime);
   if (IncidenceOutput == IncSet)
     SetWriteFile(&writing_icd, icdfile, 'i', "incidence");
@@ -914,76 +515,78 @@ void PreProjection(void)
     SetWriteFile(&writing_adj, adjfile, 'a', "adjacency");
   if (LogWriteOn)
     SetWriteFile(&writing_log, logfile, 'l', "log");
-  set_initialize(&subrows1,mm);
-  set_initialize(&subrows2,mm);
-  set_initialize(&DBrows,mm);
-  set_initialize(&subcols1,nn);  /* subcol1 : projvar & RHS columns */
-  set_initialize(&subcols2,nn);  /* subcol2 : remaining columns */
+  set_initialize(&subrows1,m_size);
+  set_initialize(&subrows2,m_size);
+  set_initialize(&DBrows,m_size);
+  set_initialize(&subcols1,n_size);  /* subcol1 : projvar & RHS columns */
+  set_initialize(&subcols2,n_size);  /* subcol2 : remaining columns */
   SetWriteFile(&writing_proj, projfile, 'p', "preprojection variable subsystem");
-  for (j=1;j<=nn;j++){
+  for (j=1;j<=n_size;j++){
     if (set_member(j,projvars) || (j==1 && Inequality==NonzeroRHS))
       set_addelem(subcols1,j);
     else
       set_addelem(subcols2,j);
   }
-  for (i=1; i<=mm; i++) set_addelem(subrows1,i);
+  for (i=1; i<=m_size; i++) set_addelem(subrows1,i);
   if (DynamicWriteOn){
-    WriteSubMatrixOfAA(stdout,subrows1,subcols1,Inequality);
+    WriteSubMatrixOfA(stdout, m_size, n_size, A, subrows1,subcols1,Inequality);
   }
-  WriteSubMatrixOfAA(writing_proj,subrows1,subcols1,Inequality);
+  WriteSubMatrixOfA(writing_proj, m_size, n_size, A, subrows1,subcols1,Inequality);
   Inequality=ZeroRHS;
-  ReduceAA(subrows1,subcols2);
-    /* Extract the submatrix of AA index by subcols2. 
+  ReduceA(&m_size, &n_size, A, subrows1,subcols2);
+    /* Extract the submatrix of A index by subcols2. 
        subcols2 is changed to a consecutive sequence starting from 1 */
   if (debug) {
-    WriteAmatrix(stdout,AA,mm,nn,NonzeroRHS);
-    WriteAmatrix(writing,AA,mm,nn,NonzeroRHS);
+    WriteAmatrix(stdout, A, m_size, n_size, NonzeroRHS);
+    WriteAmatrix(writing, A, m_size, n_size, NonzeroRHS);
   }
   PreOrderedRun=FALSE;
-  InitializeBmatrix(DBinv);
-  FindBasis(AA,MinIndex,DBrows,pivrow,DBinv,&DBrank);
+  InitializeBmatrix(n_size, DBinv);
+  FindBasis(m_size, n_size, A, MinIndex, OrderVector, DBrows,pivrow,DBinv,&DBrank);
     /* DBrows stores the rows associated with a dual basis */
   if (debug){
     printf("rank of the new (deletion col) matrix is %ld\n", DBrank);
     printf("dual basis rows ="); set_write(DBrows);
   }
-  for (j=1;j<=nn;j++) fprintf(writing,"pivot row at col %ld = %ld\n",j, pivrow[j]);
+  for (j=1;j<=n_size;j++) fprintf(writing,"pivot row at col %ld = %ld\n",j, pivrow[j]);
   set_diff(subrows2,subrows1,DBrows); 
     /* subrows2 stores the rows not in DBrows */
-  for (j=1; j<=nn;j++){
+  for (j=1; j<=n_size;j++){
     if (pivrow[j]==0) {
       set_delelem(subcols2,j);
       fprintf(writing,"Warning: col %ld is a linear combination of the other colums. The column linear dependency must be deleted for ray computation\n",j);
-      for (k=j; k<=nn-1; k++){ /* shifting all pivrow information */
+      for (k=j; k<=n_size-1; k++){ /* shifting all pivrow information */
         pivrow[j]=pivrow[j+1];
       }
-      pivrow[nn]=0;
-      nn--;
+      pivrow[n_size]=0;
+      n_size--;
     }
   }
   if (debug)  {
     printf("rows for ray enumeration:");set_write(subrows2);
     printf("cols for ray enumeration:");set_write(subcols2);
   }
-  ReduceAA(subrows2,subcols2); 
+  ReduceA(&m_size, &n_size, A, subrows2,subcols2); 
     /* subrows2 is changed to a consecutive sequence starting from 1 */
-  DualizeAA(DBinv);
+  DualizeA(&m_size, &n_size, A, DBinv);
   if (Error==DimensionTooLarge) goto _L99;
   if (debug) {
-    WriteAmatrix(stdout,AA,mm,nn,ZeroRHS);
-    WriteAmatrix(writing,AA,mm,nn,ZeroRHS);
+    WriteAmatrix(stdout,A,m_size,n_size,ZeroRHS);
+    WriteAmatrix(writing,A,m_size,n_size,ZeroRHS);
   }
   if (DynamicWriteOn) {
     WriteRunningMode(stdout);
     WriteRunningMode(writing);
   }
-  DDInit();
-  FindInitialRays(InitialHyperplanes, InitialRays, InitialRayIndex, &found);
+  OrderVector=(long *)calloc(m_size+1, sizeof *OrderVector);
+  DDInit(m_size, n_size, A, InitRays,OrderVector);
+  FindInitialRays(m_size, n_size, A, OrderVector,
+    InitialHyperplanes, InitRays, InitRayIndex, &found);
   if (found) {
-    InitialDataSetup();
-    InitialWriting();
-    DDMain();
-    WriteProjResult(pivrow);
+    InitialDataSetup(m_size, n_size, A, InitRays, InitRayIndex, OrderVector);
+    InitialWriting(m_input, n_input, m_size, n_size);
+    DDMain(m_input, n_input, m_size, n_size, A,  &Iteration, OrderVector);
+    WriteProjResult(m_input, n_input, m_size, n_size, A, pivrow, Iteration);
   } else {
     _L99:;
     WriteErrorMessages(stdout);
@@ -996,7 +599,8 @@ void PreProjection(void)
   set_free(subcols2);
 }
 
-void LPMain(void)
+void LPMain(rowrange m_input, colrange n_input,
+    rowrange m_size, colrange n_size, Amatrix A)
 {
   colindex NBIndex;  /* NBIndex[s] stores the nonbasic variable in column s */ 
   Arow LPsol, LPdsol;  /*  LP solution and the dual solution (basic var only) */
@@ -1004,27 +608,43 @@ void LPMain(void)
   colrange se;  /* evidence col when LP is dual-inconsistent */
   double ov;  /* LP optimum value */
   long LPiter;
+  boolean UsePrevBasis=FALSE;
+  Bmatrix BasisInverse;
+  dp_LPSolverType solver;
+  dp_LPConversionType lpconv;
+  dp_ErrorType error;
+  dp_LPStatusType LPStatus;
 
   time(&starttime);
+  dp_InitializeBmatrix(n_size, BasisInverse);
+  OBJrow=m_size; RHScol=1L;
+
   if (Inequality==ZeroRHS){
     printf("Sorry, LP optimization is not implemented for RHS==0.\n");
     goto _L99;
   }
-  if (Conversion==LPmax){
-    CrissCrossMaximize(AA, InitialRays, OBJrow, RHScol, 
-      &LPStatus, &ov, LPsol, LPdsol,NBIndex, &re, &se, &LPiter);
+  switch (Conversion) {
+    case LPmax: lpconv=dp_LPmax;break;
+    case LPmin: lpconv=dp_LPmin;break;
+    default: lpconv=dp_LPmax;
+  }  
+  switch (LPsolver) {
+    case DualSimplex: solver=dp_DualSimplex;break;
+    case CrissCross:  solver=dp_CrissCross;break;
+    default:          solver=dp_DualSimplex;
   }
-  else if (Conversion==LPmin){
-    CrissCrossMinimize(AA, InitialRays, OBJrow, RHScol, 
-      &LPStatus, &ov, LPsol, LPdsol,NBIndex, &re, &se, &LPiter);
-  }
-  WriteLPResult(writing, LPStatus, ov, LPsol, LPdsol, NBIndex, re, se, LPiter);
+  dp_LPSolve(lpconv, solver, m_size, n_size, A, BasisInverse, OBJrow, RHScol, UsePrevBasis,
+        &LPStatus, &ov, LPsol, LPdsol,NBIndex, &re, &se, &LPiter, &error);
+  dp_WriteLPResult(writing, lpconv, solver, m_size, n_size, A, OBJrow, RHScol,
+    LPStatus, ov, LPsol, LPdsol, NBIndex, re, se, LPiter, error);
   if (DynamicWriteOn)
-    WriteLPResult(stdout,LPStatus, ov, LPsol, LPdsol, NBIndex, re, se, LPiter);
+    dp_WriteLPResult(stdout, lpconv, solver, m_size, n_size, A, OBJrow, RHScol,
+      LPStatus, ov, LPsol, LPdsol, NBIndex, re, se, LPiter, error);
 _L99:;
 }
 
-void InteriorFindMain(void)
+void InteriorFindMain(rowrange m_input, colrange n_input,
+    rowrange m_size, colrange n_size, Amatrix A)
 {
   colindex NBIndex;  /* NBIndex[s] stores the nonbasic variable in column s */ 
   Arow LPsol, LPdsol;  /*  LP solution and the dual solution (basic var only) */
@@ -1032,29 +652,62 @@ void InteriorFindMain(void)
   colrange se;  /* evidence col when LP is dual-inconsistent */
   double ov;  /* LP optimum value */
   long LPiter;
+  Bmatrix BasisInverse;
+  boolean UsePrevBasis;
+  dp_LPSolverType solver;
+  dp_LPConversionType lpconv;
+  dp_ErrorType error;
+  dp_LPStatusType LPStatus;
+
+  lpconv=dp_LPmax;
+  switch (LPsolver) {
+    case DualSimplex: solver=dp_DualSimplex;break;
+    case CrissCross:  solver=dp_CrissCross;break;
+    default:          solver=dp_DualSimplex;
+  }
 
   if (Inequality==ZeroRHS){
     printf("Sorry, find_interior is not implemented for RHS==0.\n");
     goto _L99;
   }
-  EnlargeAAforInteriorFinding();
+  EnlargeAforInteriorFinding(&m_input, &n_input, A);
+  dp_InitializeBmatrix(n_size, BasisInverse);
+
   time(&starttime);
-  OBJrow=mm; RHScol=1;
-  CrissCrossMaximize(AA, InitialRays, OBJrow, RHScol, 
-    &LPStatus, &ov, LPsol, LPdsol,NBIndex, &re, &se, &LPiter);
-  WriteLPResult(writing, LPStatus, ov, LPsol, LPdsol, NBIndex, re, se, LPiter);
+  OBJrow=m_size; RHScol=1;
+  UsePrevBasis=FALSE;
+
+  fprintf(writing,"*inerior point computation is chosen.\n");
+  fprintf(writing,"*the following is the result of solving the LP:\n");
+  fprintf(writing,"*   maximize      x_{d+1}\n");
+  fprintf(writing,"*   s.t.    A x + x_{d+1}  <=  b.\n");
+  fprintf(writing,"*Thus, the optimum value is zero     if the polyhedron has no interior point.\n");
+  fprintf(writing,"*      the optimum value is negative if the polyhedron is empty.\n");
+  fprintf(writing,"*      the LP is dual inconsistent   if the polyhedron admits unbounded inscribing balls.\n");
+ 
+  dp_LPSolve(lpconv, solver, m_size, n_size, A, BasisInverse, OBJrow, RHScol, UsePrevBasis, 
+      &LPStatus, &ov, LPsol, LPdsol,NBIndex, &re, &se, &LPiter, &error);
+  dp_WriteLPResult(writing, lpconv, solver, m_size, n_size, A, OBJrow, RHScol,
+    LPStatus, ov, LPsol, LPdsol, NBIndex, re, se, LPiter, error);
   if (DynamicWriteOn)
-    WriteLPResult(stdout,LPStatus, ov, LPsol, LPdsol, NBIndex, re, se, LPiter);
+    dp_WriteLPResult(stdout, lpconv, solver, m_size, n_size, A, OBJrow, RHScol,
+      LPStatus, ov, LPsol, LPdsol, NBIndex, re, se, LPiter, error);
 _L99:;
 }
 
 
 void main(int argc, char *argv[])
 {
+  rowrange minput;
+  colrange ninput;   /*size of input data [b -A] */
+  rowrange mm;
+  colrange nn;   /*size of the homogenous system to be solved by cdd */
+  Amatrix AA;
+
   WriteHeading();
   DefaultOptionSetup();
   Initialization(argc, argv);
-  AmatrixInput(&inputsuccessful);
+  AmatrixInput(&minput, &ninput, &mm, &nn, AA, &inputsuccessful);
 
   /* InitProfile(200,200);                THINK C PROFILER */
   /* cecho2file("cdd profile", 0,stdout); THINK C PROFILER */
@@ -1064,7 +717,7 @@ void main(int argc, char *argv[])
     SetWriteFile(&writing,outputfile,'o',"output");
     if (VerifyInput){
       SetWriteFile(&writing_ver,verfile,'v',"input verification");
-      WriteSolvedProblem(writing_ver);
+      WriteSolvedProblem(writing_ver, minput, ninput, mm, nn, AA);
       fclose(writing_ver);
       if (DynamicWriteOn) printf("closing the file %s\n",verfile);
      }
@@ -1074,21 +727,21 @@ void main(int argc, char *argv[])
     }
     switch (Conversion) {
     case ExtToIne: case IneToExt: /* vertex/facets enumeration is chosen */
-      if (RowDecomposition) DDRowDecomposition();
-      else DDEnumerate();
+      if (RowDecomposition) DDRowDecomposition(minput, ninput, mm, nn, AA);
+      else DDEnumerate(minput, ninput, mm, nn, AA);
       break;
     
     case LPmax:  case LPmin:      /* LP is chosen */
-      LPMain();
+      LPMain(minput, ninput, mm, nn, AA);
       
       break;
 
     case Projection:              /* preprojection is chosen */
-      PreProjection();
+      PreProjection(minput, ninput, mm, nn, AA);
       break;
 
     case InteriorFind:      /* Interior point search is chosen */
-      InteriorFindMain();
+      InteriorFindMain(minput, ninput, mm, nn, AA);
       break;
   
     default: break;
