@@ -1,41 +1,40 @@
-* cdd: Double Description Method C-Code:Version C0.27 (December 8, 1993)
-* Copyright (C) 1993, Komei Fukuda, fukuda@dma.epfl.ch
+* cdd: Double Description Method C-Code:Version C0.51 (February 12, 1994)
+* Copyright (C) 1994, Komei Fukuda, fukuda@dma.epfl.ch
 *Input File:reg24-5.ine   (  24  x    5)
 *HyperplaneOrder: LexMin
-*AdjacencyTest: Combinatorial
 *Degeneracy preknowledge for computation: None (possible degeneracy)
 *Hull computation is chosen.
-*Computation starts     at Mon Dec 20 08:25:04 1993
-*            terminates at Mon Dec 20 08:25:04 1993
-*Total processor time = 0 seconds
-*                     = 0 hour 0 min 0 sec
+*Computation starts     at Wed Feb 16 10:19:58 1994
+*            terminates at Wed Feb 16 10:19:59 1994
+*Total processor time = 1 seconds
+*                     = 0 hour 0 min 1 sec
 *Since hull computation is chosen, the output is a minimal inequality system
 *FINAL RESULT:
 *Number of Facets =      24
 begin
        24      5    real
-  2  1  1  0  0
-  2  1  0  1  0
+  2  0 -1 -1  0
+  2  0  0 -1 -1
+  2  0 -1  0 -1
+  2  0 -1  1  0
+  2  0  0  1 -1
+  2  0  1 -1  0
+  2  0  1  0 -1
+  2  0  1  1  0
+  2  1 -1  0  0
   2  1  0  0 -1
+  2  1  0  1  0
+  2  1  1  0  0
   2  1  0  0  1
   2  1  0 -1  0
-  2  1 -1  0  0
-  2  0  1  1  0
-  2  0  1  0 -1
-  2  0  0  1 -1
   2  0  1  0  1
   2  0  0  1  1
-  2  0  1 -1  0
-  2  0  0 -1 -1
-  2  0  0 -1  1
-  2  0 -1  1  0
-  2  0 -1  0 -1
   2  0 -1  0  1
-  2  0 -1 -1  0
-  2 -1  1  0  0
-  2 -1  0  0 -1
-  2 -1  0  1  0
+  2  0  0 -1  1
   2 -1  0  0  1
+  2 -1  1  0  0
+  2 -1  0  1  0
+  2 -1  0  0 -1
   2 -1  0 -1  0
   2 -1 -1  0  0
 end

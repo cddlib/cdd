@@ -1,4 +1,5 @@
-1994-02-02
+1994-03-15
+-----
 This directory contains the distribution files of the software cdd:
 
      cdd.readme     This file itself
@@ -21,16 +22,25 @@ compile and print out the manual.
 
 To compile the manual cddman.tex in standard unix environment, run
 the following command twice (% is a unix prompt): 
+
    % latex cddmax.tex
-to get the dvi file, cddman.dvi.  On printing or viewing commands
+
+to get the dvi file, cddman.dvi.  On the printing or viewing commands
 for cddman.dvi file, please ask a local system administrator.
 
 For compilation of cdd, simply use the following:
-   % gcc cdd.c cddarith.c setoper.c 
-to get an executable file a.out. For a faster code, compile with 
-some optimization option like
-   % gcc -O cdd.c cddarith.c setoper.c 
-where gcc can be replaced by cc.
+
+   % gcc -o cdd cdd.c cddarith.c setoper.c 
+
+to get an executable file "cdd", where o is the lower letter "oh". 
+For a faster code, compile them with an optimization option as 
+
+   % gcc -o cdd -O cdd.c cddarith.c setoper.c 
+
+In above, gnu C compiler gcc can be replaced by the native C-compiler
+cc of your system if cc supports the modern ANSI C. We have found that
+some cc compilers (such as some C-compiler on SUN workstations)
+do not support it.
 
 For more information, contact
    Komei Fukuda

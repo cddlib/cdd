@@ -738,5 +738,4 @@ begin
     0    -6     2     1     2    -3     1     2   -15 
 end
 mincutoff
-logfile_on
 

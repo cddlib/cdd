@@ -3,7 +3,7 @@
 /* setoper.c: 
  * A set operation library 
  * created by Komei Fukuda, Nov.14, 1993
- * modified on Jan. 23, 1994
+ * modified on Feb. 17, 1994
  */
 
 #define SETBITS 32       /* Important Constant: Number of bits in a long integer */
@@ -32,3 +32,4 @@ void set_binwrite(set_type set);
 void set_fbinwrite(FILE *f,set_type set);
 
 /* End of File: setoper.h */
+

@@ -1,6 +1,6 @@
 /* cdddef.h:  Definition file for cdd.c 
    written by Komei Fukuda, fukuda@dma.epfl.ch
-   Version 0.38,  Jan. 31, 1994
+   Version 0.51c,  March 15, 1994
 */
 
 /* cdd.c : C-Implementation of the double description method for
@@ -26,4 +26,5 @@
 
 #define zero            1.0e-5   /*real zero*/
 
-/* End of cdddef.h */
+/* end of cdddef.h */
+

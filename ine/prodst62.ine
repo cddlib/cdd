@@ -1,5 +1,6 @@
 Created by Alain Prodon.
 Convex hull problem and the number of facets is 168.
+(cdd051 takes about 30 hours on NeXT station 25 mhz.) 
 begin
   3461 25  integer
  1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
@@ -3465,5 +3466,6 @@ begin
  1 1 1 1 1 0 0 1 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
 end
 hull
-#incidence
+incidence
+minindex
 basis_at_bottom

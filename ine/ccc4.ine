@@ -13,5 +13,5 @@ begin
 end
 hull
 incidence
-
+adjacency
 

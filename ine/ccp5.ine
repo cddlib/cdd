@@ -21,4 +21,5 @@ begin
 end
 hull
 incidence
-mincutoff
+adjacency
+

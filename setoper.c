@@ -1,7 +1,7 @@
 /* setoper.c:
  * A set operation library 
  * created by Komei Fukuda, Nov.14, 1993
- * modified on Jan 23, 1994 
+ * modified on Feb. 17, 1994 
  */
 
 #include "setoper.h"
@@ -196,7 +196,7 @@ void set_binwrite(set_type set)
 {
 	int i,j;
 	long forlim;
-	unsigned long e1,e2;
+	long e1,e2;
 	
 	printf("max element = %ld,\n",set[0]);
 	forlim=set_blocks(set[0])-1;
@@ -206,7 +206,7 @@ void set_binwrite(set_type set)
 		for (j=SETBITS-1;j>=0;j--)
 		{
 			e1=(e1>>j);
-			printf("%1ld",e1);
+			printf("%ld",e1);
 			e1=e2-(e1<<j);
 			e2=e1;
 		}
@@ -220,7 +220,7 @@ void set_fbinwrite(FILE *f,set_type set)
 {
 	int i,j;
 	long forlim;
-	unsigned long e1,e2;
+	long e1,e2;
 	
 	printf("max element = %ld,\n",set[0]);
 	forlim=set_blocks(set[0])-1;
@@ -230,7 +230,7 @@ void set_fbinwrite(FILE *f,set_type set)
 		for (j=SETBITS-1;j>=0;j--)
 		{
 			e1=(e1>>j);
-			fprintf(f,"%1ld",e1);
+			fprintf(f,"%ld",e1);
 			e1=e2-(e1<<j);
 			e2=e1;
 		}
@@ -240,3 +240,4 @@ void set_fbinwrite(FILE *f,set_type set)
 }
 
 /* End of the library:  setoper.c  */
+

@@ -1,26 +1,42 @@
-* cdd: Double Description Method C-Code:Version C0.27 (December 8, 1993)
-* Copyright (C) 1993, Komei Fukuda, fukuda@dma.epfl.ch
+* cdd: Double Description Method C-Code:Version C0.51 (February 12, 1994)
+* Copyright (C) 1994, Komei Fukuda, fukuda@dma.epfl.ch
 *Input File:cube6.ine   (  12  x    7)
 *HyperplaneOrder: LexMin
-*AdjacencyTest: Combinatorial
-*Degeneracy preknowledge for computation: NondegenerateAssumed
+*Degeneracy preknowledge for computation: None (possible degeneracy)
+*Vertex/Ray enumeration is chosen.
 *Computation completed at Iteration   12.
-*Computation starts     at Mon Dec 13 14:47:08 1993
-*            terminates at Mon Dec 13 14:47:09 1993
-*Total processor time = 1 seconds
-*                     = 0 hour 0 min 1 sec
+*Computation starts     at Wed Feb 16 10:30:19 1994
+*            terminates at Wed Feb 16 10:30:19 1994
+*Total processor time = 0 seconds
+*                     = 0 hour 0 min 0 sec
 *FINAL RESULT:
 *Number of Vertices =      64,   Rays =       0
 begin
        64      7    real
-  1  0  0  0  0  0  0
+  1  1  1  1  1  1  0
+  1  0  1  1  1  1  0
+  1  1  0  1  1  1  0
+  1  0  0  1  1  1  0
+  1  1  1  0  1  1  0
+  1  0  1  0  1  1  0
+  1  1  0  0  1  1  0
+  1  0  0  0  1  1  0
+  1  1  1  1  0  1  0
+  1  0  1  1  0  1  0
+  1  1  0  1  0  1  0
+  1  0  0  1  0  1  0
+  1  1  1  0  0  1  0
+  1  0  1  0  0  1  0
+  1  1  0  0  0  1  0
+  1  0  0  0  0  1  0
+  1  1  1  1  0  0  0
+  1  0  1  1  0  0  0
+  1  1  0  1  0  0  0
+  1  0  0  1  0  0  0
   1  1  0  0  0  0  0
+  1  0  0  0  0  0  0
   1  0  1  0  0  0  0
   1  1  1  0  0  0  0
-  1  0  0  1  0  0  0
-  1  1  0  1  0  0  0
-  1  0  1  1  0  0  0
-  1  1  1  1  0  0  0
   1  0  0  0  1  0  0
   1  1  0  0  1  0  0
   1  0  1  0  1  0  0
@@ -29,22 +45,6 @@ begin
   1  1  0  1  1  0  0
   1  0  1  1  1  0  0
   1  1  1  1  1  0  0
-  1  0  0  0  0  1  0
-  1  1  0  0  0  1  0
-  1  0  1  0  0  1  0
-  1  1  1  0  0  1  0
-  1  0  0  1  0  1  0
-  1  1  0  1  0  1  0
-  1  0  1  1  0  1  0
-  1  1  1  1  0  1  0
-  1  0  0  0  1  1  0
-  1  1  0  0  1  1  0
-  1  0  1  0  1  1  0
-  1  1  1  0  1  1  0
-  1  0  0  1  1  1  0
-  1  1  0  1  1  1  0
-  1  0  1  1  1  1  0
-  1  1  1  1  1  1  0
   1  0  0  0  0  0  1
   1  1  0  0  0  0  1
   1  0  1  0  0  0  1

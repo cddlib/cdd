@@ -1,6 +1,6 @@
 /* cdd.h: Header file for cdd.c 
    written by Komei Fukuda, fukuda@dma.epfl.ch
-   Version 0.38, Jan. 31, 1994 
+   Version 0.51c, March 15, 1994 
 */
 
 /* cdd.c : C-Implementation of the double description method for
@@ -17,7 +17,8 @@ typedef long rowrange;
 typedef long colrange;
 typedef set_type rowset;  /* set_type defined in setoper.h */
 typedef set_type colset;
-typedef long rowindex[MMAX+1];
+typedef long *rowindex;   
+    /* rowindex should be intialized to be an array of [MMAX+1] components */
 typedef long colindex[NMAX+1];
 typedef double *Amatrix[MMAX];
 typedef double Arow[NMAX];
@@ -29,20 +30,23 @@ typedef char WordType[wordlenmax];
 typedef struct RayRecord {
   double *Ray;
   rowset ZeroSet;
+  rowrange FirstInfeasIndex;  /* the first inequality the ray violates */
   double ARay;   /* temporary area to store some row of A*Ray */
   struct RayRecord *Next;
 } RayRecord;
 
 typedef struct AdjacencyRecord {
   RayRecord *Ray1, *Ray2;
-  struct AdjacencyRecord *next;
+  struct AdjacencyRecord *Next;
 } AdjacencyRecord;
+
+typedef struct node {long key; struct node *next;} node;
 
 typedef enum {
   Combinatorial, Algebraic
 } AdjacencyTestType;
 typedef enum {
-  LargestIndex, LeastIndex, MinCutoff, MaxCutoff, MixCutoff, LexMin, LexMax
+  MaxIndex, MinIndex, MinCutoff, MaxCutoff, MixCutoff, LexMin, LexMax
 } HyperplaneOrderType;
 typedef enum {
   Real, Rational, Integer, Unknown
@@ -81,8 +85,10 @@ extern colset projvars;   /*set of variables spanning the space of preprojection
      i.e. the remaining variables are to be removed*/
 extern rowset MarkedSet, GroundSet, Face, Face1;
 extern rowrange Iteration, hh;
+extern rowindex OrderVector;
 extern rowset AddedHyperplanes, InitialHyperplanes;
-extern long RayCount, FeasibleRayCount, TotalRayCount, VertexCount;
+extern long RayCount, FeasibleRayCount, TotalRayCount, VertexCount, EdgeCount, ZeroRayCount;
+extern long count_int,count_int_good,count_int_bad;
 extern boolean DynamicWriteOn, DynamicRayWriteOn, LogWriteOn, debug;
 extern Amatrix AA;
 extern Bmatrix InitialRays;
@@ -91,7 +97,9 @@ extern colrange RHScol;   /* LP RHS column */
 extern rowrange OBJrow;   /* LP OBJ row */
 extern Arow LPcost;
 extern RayRecord *ArtificialRay, *FirstRay, *LastRay;
-extern boolean inputsuccessful;
+extern RayRecord *PosHead, *ZeroHead, *NegHead, *PosLast, *ZeroLast, *NegLast;
+extern AdjacencyRecord *Edges[MMAX];  /* adjacency relation storage for iteration k */
+extern boolean RecomputeRowOrder, inputsuccessful;
 extern HyperplaneOrderType HyperplaneOrder;
 extern AdjacencyTestType AdjacencyTest;
 extern NumberType Number;
@@ -99,6 +107,7 @@ extern InequalityType Inequality;
 extern boolean NondegAssumed;   /* Nondegeneacy preknowledge flag */
 extern boolean InitBasisAtBottom;  /* if it is on, the initial Basis will be selected at bottom */
 extern boolean PartialEnumeration; /* Partial enumeration Switch (TRUE if it is restricted on the intersection of MarkedSet hyperplanes) */
+extern boolean PreOrderedRun; 
 extern CompStatusType CompStatus;     /* Computation Status */
 extern ConversionType Conversion;
 extern IncidenceOutputType IncidenceOutput;
@@ -129,6 +138,9 @@ void WriteIncidence(FILE *, RayRecord *);
 void StoreRay(double *, RayRecord *, boolean *);
 void AddRay(double *);
 void AddArtificialRay(void);
+void ConditionalAddEdge(RayRecord *Ray1, RayRecord *Ray2, RayRecord *ValidFirstRay);
+void CreateInitialEdges(void);
+void UpdateEdges(RayRecord *RRbegin, RayRecord *RRend);
 void Normalize(double *);
 void ZeroIndexSet(double *, long *);
 void CopyBmatrix(Bmatrix T, Bmatrix TCOPY);
@@ -156,7 +168,11 @@ void FindBasis(Amatrix, HyperplaneOrderType, long *, long *,
 void SelectCrissCrossPivot(Amatrix, Bmatrix T,
   long bflag[], rowrange,colrange,rowrange *,colrange *,
   boolean *, LPStatusType *);
-void CrissCrossSolve(Amatrix,Bmatrix BasisInverse,
+void CrissCrossMinimize(Amatrix,Bmatrix BasisInverse,
+  rowrange, colrange, 
+  LPStatusType *, double *optvalue, Arow, Arow, colindex,
+  rowrange *, colrange *, long *);
+void CrissCrossMaximize(Amatrix,Bmatrix BasisInverse,
   rowrange, colrange, 
   LPStatusType *, double *optvalue, Arow, Arow, colindex,
   rowrange *, colrange *, long *);
@@ -169,16 +185,22 @@ void CheckAdjacency2(RayRecord **, RayRecord **,boolean *);
 void CheckEquality(RayRecord **, RayRecord **, boolean *);
 void Eliminate(RayRecord **);
 void CreateNewRay(RayRecord *, RayRecord *, rowrange);
-void EvaluateARay(rowrange);
+void EvaluateARay1(rowrange);
+void EvaluateARay2(rowrange);
 void FeasibilityIndices(long *, long *, rowrange);
 boolean LexSmaller(double *, double *);
 boolean LexLarger(double *, double *);
 void CopyArow(double *, double *);
-void SelectNextHyperplane(HyperplaneOrderType,long *, rowrange *);
-void AddNewHyperplane(rowrange);
+void ComputeRowOrderVector(rowindex OV, HyperplaneOrderType ho);
+void UpdateRowOrderVector(rowset PriorityRows);
+void SelectNextHyperplane(HyperplaneOrderType,long *, rowrange *, boolean *);
+void SelectPreorderedNext(long *excluded, rowindex, rowrange *hnext);
+void AddNewHyperplane1(rowrange);
+void AddNewHyperplane2(rowrange);
 void WriteAdjacency(FILE *);
 void WriteRunningMode(FILE *);
 void WriteCompletionStatus(FILE *);
 void WriteTimes(FILE *);
 
-/* End. */
+/* end of cdd.h */
+

@@ -204,6 +204,7 @@ begin
   1    -31    -29    -23 
 end
 hull
-maxcutoff
 incidence
+adjacency
+minindex
 

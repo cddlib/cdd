@@ -1,6 +1,6 @@
 /* cddarith.c:  Floating Point Arithmetic Procedures for cdd.c
    written by Komei Fukuda, fukuda@dma.epfl.ch
-   Version 0.38, Jan. 31, 1994 
+   Version 0.51c, March 15, 1994 
 */
 
 /* cdd.c : C-Implementation of the double description method for
@@ -58,16 +58,23 @@ void ProcessCommandLine(char *line)
     AdjacencyOutput = OutputAdjacency;
     return;
   }
+/*  algebraic option is not efficint in most cases and deleted from Version 051 */
+/*
   if (strncmp(line, "algebraic", 9)==0) {
     AdjacencyTest = Algebraic;
     return;
   }
+*/
   if (strncmp(line, "nondegenerate", 14)==0) {
     NondegAssumed = TRUE;
     return;
   }
   if (strncmp(line, "minindex", 8)==0) {
-    HyperplaneOrder = LeastIndex;
+    HyperplaneOrder = MinIndex;
+    return;
+  }
+  if (strncmp(line, "maxindex", 8)==0) {
+    HyperplaneOrder = MaxIndex;
     return;
   }
   if (strncmp(line, "mincutoff", 9)==0) {
@@ -135,6 +142,19 @@ void ProcessCommandLine(char *line)
       if (debug) printf(" cost[%ld] = %.9E\n",j,LPcost[j]);
     }
     Conversion=LPmax;
+    if (debug) {
+      printf("\n");
+    }
+    return;
+  }
+  if (strncmp(line, "minimize", 8)==0 && Conversion != LPmin) {
+    if (debug) printf("linear minimization is chosen.\n");
+    for (j=0;j<nn;j++) {
+      fscanf(reading,"%lf",&cost);
+      LPcost[j]=cost;
+      if (debug) printf(" cost[%ld] = %.9E\n",j,LPcost[j]);
+    }
+    Conversion=LPmin;
     if (debug) {
       printf("\n");
     }
@@ -244,13 +264,17 @@ void AmatrixInput(boolean *successful)
   
   switch (Conversion) {
   case IneToExt:
-    mm = minput + 1;
-    AA[mm-1]=(double *) calloc(ninput, sizeof value);
-    for (j = 1; j <= ninput; j++) {   /*artificial row for x_1 >= 0*/
-      if (j == 1)
-        AA[mm - 1][j - 1] = 1.0;
-      else
-        AA[mm - 1][j - 1] = 0.0;
+    if (Inequality==NonzeroRHS){
+      mm = minput + 1;
+      AA[mm-1]=(double *) calloc(ninput, sizeof value);
+      for (j = 1; j <= ninput; j++) {   /*artificial row for x_1 >= 0*/
+        if (j == 1)
+          AA[mm - 1][j - 1] = 1.0;
+        else
+          AA[mm - 1][j - 1] = 0.0;
+      }
+    } else{
+      mm = minput;
     }
     break;
 
@@ -258,7 +282,7 @@ void AmatrixInput(boolean *successful)
     mm = minput;
     break;
 
-  case LPmax:
+  case LPmax:  case LPmin:
     mm = minput + 1;
     OBJrow=mm;
     RHScol=1L;
@@ -349,7 +373,7 @@ double AValue(double *p, rowrange i)
 
 void StoreRay(double *p, RayRecord *RR, boolean *feasible)
 {
-  rowrange i;
+  rowrange i,k,fii=mm+1;
   colrange j;
   double temp;
 
@@ -359,12 +383,17 @@ void StoreRay(double *p, RayRecord *RR, boolean *feasible)
   for (j = 0; j < nn; j++)
     RR->Ray[j] = p[j];
   for (i = 1; i <= mm; i++) {
-    temp = AValue(p, i);
+    k=OrderVector[i];
+    temp = AValue(p, k);
     if (fabs(temp) < zero)
-      set_addelem(RR->ZeroSet, i);
-    if (temp <= -zero)
+      set_addelem(RR->ZeroSet, k);
+    if (temp < -zero){
       *feasible = FALSE;
+      if (fii>mm) fii=i;  /* the first violating inequality index */
+    }
   }
+  RR->FirstInfeasIndex=fii;
+  if (debug) printf("store ray with fii= %ld\n", fii);
 }
 
 
@@ -435,6 +464,200 @@ void AddArtificialRay(void)
   ArtificialRay->Next = NULL;
 }
 
+void ConditionalAddEdge(RayRecord *Ray1, RayRecord *Ray2, RayRecord *ValidFirstRay)
+{
+  long it,it_row,fii1,fii2,fmin,fmax;
+  boolean adjacent,lastchance;
+  RayRecord *TempRay,*Rmin,*Rmax;
+  AdjacencyRecord *NewEdge;
+  boolean localdebug=FALSE;
+  long *ZSmin, *ZSmax;
+  
+  fii1=Ray1->FirstInfeasIndex;
+  fii2=Ray2->FirstInfeasIndex;
+  if (fii1<fii2){
+    fmin=fii1; fmax=fii2;
+    Rmin=Ray1;
+    Rmax=Ray2;
+  }
+  else{
+    fmin=fii2; fmax=fii1;
+    Rmin=Ray2;
+    Rmax=Ray1;
+  }
+  ZSmin = Rmin->ZeroSet;
+  ZSmax = Rmax->ZeroSet;
+  if (localdebug) printf("ConditionalAddEdge: FMIN = %ld (row%ld)   FMAX=%ld\n",
+    fmin,OrderVector[fmin], fmax);
+  if (fmin==fmax){
+    if (localdebug) printf("ConditionalAddEdge: equal FII value-> No edge added\n");
+  }
+  else if (set_member(OrderVector[fmin],ZSmax)){
+    if (localdebug) printf("ConditionalAddEdge: No strong separation -> No edge added\n");
+  }
+  else {  /* the pair will be separated at the iteration fmin */
+    lastchance=TRUE;
+    /* flag to check it will be the last chance to store the edge candidate */
+    set_int(Face1, ZSmax, ZSmin);
+    count_int++;
+    if (localdebug){
+      printf("Face: ");
+      for (it=1; it<=mm; it++) {
+        it_row=OrderVector[it];
+        if (set_member(it_row, Face1)) printf("%ld ",it_row);
+      }
+      printf("\n");
+    }
+    for (it=Iteration+1; it < fmin && lastchance; it++){
+      it_row=OrderVector[it];
+      if (set_member(it_row, Face1)){
+        lastchance=FALSE;
+        count_int_bad++;
+        if (localdebug){
+          printf("There will be another chance iteration %ld (row %ld) to store the pair\n", it, it_row);
+        }
+      }
+    }
+    if (lastchance){
+      adjacent = TRUE;
+      count_int_good++;
+      /* adjacent checking */
+      set_int(Face, Face1, AddedHyperplanes);
+      if (localdebug){
+        printf("Check adjacency\n");
+        printf("AddedHyperplanes: "); set_write(AddedHyperplanes);
+        printf("Face: ");
+        for (it=1; it<=mm; it++) {
+          it_row=OrderVector[it];
+          if (set_member(it_row, Face)) printf("%ld ",it_row);
+        }
+        printf("\n");
+      }
+      if (Cardinality(Face)< nn - 2) {
+        adjacent = FALSE;
+      }
+      else if (NondegAssumed) {
+    	adjacent = TRUE;
+      }
+      else{
+        TempRay = ValidFirstRay;  /* the first ray for adjacency checking */
+        while (TempRay != NULL && adjacent) {
+          if (TempRay != Ray1 && TempRay != Ray2) {
+            set_int(Face1, TempRay->ZeroSet, AddedHyperplanes);
+            if (set_subset(Face, Face1)) {
+              if (localdebug) set_write(Face1);
+              adjacent = FALSE;
+            }
+          }
+          TempRay = TempRay->Next;
+        }
+      }
+      if (adjacent){
+        if (localdebug) printf("The pair is adjacent and the pair must be stored for iteration %ld (row%ld)\n",
+          fmin, OrderVector[fmin]);
+        NewEdge=(struct AdjacencyRecord *) malloc(sizeof *NewEdge);
+        NewEdge->Ray1=Rmax;  /* save the one remains in iteration fmin in the first */
+        NewEdge->Ray2=Rmin;  /* save the one deleted in iteration fmin in the second */
+        NewEdge->Next=NULL;
+        EdgeCount++;
+        if (Edges[fmin]==NULL){
+          Edges[fmin]=NewEdge;
+          if (localdebug) printf("Create a new edge list of %ld\n", fmin);
+        }else{
+          NewEdge->Next=Edges[fmin];
+          Edges[fmin]=NewEdge;
+        }
+      }
+    }
+  }
+}
+
+void CreateInitialEdges(void)
+{
+  RayRecord *Ptr1, *Ptr2;
+  rowrange fii1,fii2;
+  long count=0;
+  boolean localdebug=FALSE;
+  
+  if (FirstRay ==NULL || LastRay==NULL){
+    printf("Error found: CreateInitialEdges called with NULL pointer(s)\n");
+    goto _L99;
+  }
+  Ptr1=FirstRay;
+  while(Ptr1!=LastRay && Ptr1!=NULL){
+    fii1=Ptr1->FirstInfeasIndex;
+    Ptr2=Ptr1->Next;
+    while(Ptr2!=NULL){
+      fii2=Ptr2->FirstInfeasIndex;
+      count++;
+      if (localdebug) printf("CreateInitialEdges: edge %ld \n",count);
+      if (fii1!=fii2) ConditionalAddEdge(Ptr1,Ptr2,FirstRay);
+      Ptr2=Ptr2->Next;
+    }
+    Ptr1=Ptr1->Next;
+  }
+_L99:;  
+}
+
+
+void UpdateEdges(RayRecord *RRbegin, RayRecord *RRend)
+/* This procedure must be called after the ray list is sorted
+   by EvaluateARay2 so that FirstInfeasIndex's are monotonically
+   increasing.
+*/
+{
+  RayRecord *Ptr1, *Ptr2begin, *Ptr2;
+  rowrange fii1;
+  boolean ptr2found,quit,localdebug=FALSE;
+  long count=0,pos1,pos2;
+  float workleft,prevworkleft=100,totalpairs;
+
+  totalpairs=(ZeroRayCount-1.0)*(ZeroRayCount-2.0)+1.0;
+  Ptr2begin = NULL; 
+  if (RRbegin ==NULL || RRend==NULL){
+    if (1) printf("Warning: UpdateEdges called with NULL pointer(s)\n");
+    goto _L99;
+  }
+  Ptr1=RRbegin;
+  pos1=1;
+  do{
+    ptr2found=FALSE;
+    quit=FALSE;
+    fii1=Ptr1->FirstInfeasIndex;
+    pos2=2;
+    for (Ptr2=Ptr1->Next; !ptr2found && !quit; Ptr2=Ptr2->Next, pos2++){
+      if  (Ptr2->FirstInfeasIndex > fii1){
+        Ptr2begin=Ptr2;
+        ptr2found=TRUE;
+      }
+      else if (Ptr2==RRend) quit=TRUE;
+    }
+    if (ptr2found){
+      quit=FALSE;
+      for (Ptr2=Ptr2begin; !quit ; Ptr2=Ptr2->Next){
+        count++;
+        if (localdebug) printf("UpdateEdges: edge %ld \n",count);
+        ConditionalAddEdge(Ptr1,Ptr2,RRbegin);
+        if (Ptr2==RRend || Ptr2->Next==NULL) quit=TRUE;
+      }
+    }
+    Ptr1=Ptr1->Next;
+    pos1++;
+    workleft = 100 * (ZeroRayCount-pos1) * (ZeroRayCount - pos1-1) / totalpairs;
+    if (ZeroRayCount>=200 && DynamicWriteOn && pos1%10==0 && prevworkleft-workleft>=10 ) {
+      printf("*Work of iteration %5ld(/%ld): %4ld/%4ld => %4.1f%% left\n",
+	     Iteration, mm, pos1, ZeroRayCount, workleft);
+      fprintf(writing,
+	  "*Work of iteration %5ld(/%ld): %4ld/%4ld => %4.1f%% left\n",
+	  Iteration, mm, pos1, ZeroRayCount, workleft);
+	  prevworkleft=workleft;
+	  fflush(writing);
+	  if (writing_icd != NULL) fflush(writing_icd);
+    }    
+  }while(Ptr1!=RRend && Ptr1!=NULL);
+_L99:;  
+}
+
 
 void Normalize(double *V)
 {
@@ -496,7 +719,7 @@ void SelectPivot1(Amatrix X, HyperplaneOrderType roworder,
   }
   *selected = FALSE;
   do {
-    SelectNextHyperplane(roworder, rowexcluded, &rtemp);
+    SelectNextHyperplane(roworder, rowexcluded, &rtemp, &RecomputeRowOrder);
     if (rtemp>=1) {
       *r=rtemp;
       *s=1;
@@ -593,7 +816,7 @@ void SelectPivot2(Amatrix X, Bmatrix T,
       }
       i++;
     }
-    if (rtemp==0) SelectNextHyperplane(roworder, rowexcluded, &rtemp);
+    if (rtemp==0) SelectNextHyperplane(roworder, rowexcluded, &rtemp, &RecomputeRowOrder);
     if (rtemp>=1) {
       *r=rtemp;
       *s=1;
@@ -937,7 +1160,7 @@ void ComputeRank(Amatrix A1, long *TargetRows, long *rank)
   SetToIdentity(Btemp);
   if (debug) WriteBmatrix(stdout,Btemp);
   do {   /* Find a set of rows for a basis */
-      SelectPivot2(A1, Btemp, LeastIndex, mm, NoPivotRow, ColSelected, &r, &s, &chosen);
+      SelectPivot2(A1, Btemp, MinIndex, mm, NoPivotRow, ColSelected, &r, &s, &chosen);
       if (debug && chosen) printf("Procedure FindBasis: pivot on (r,s) =(%ld, %ld).\n", r, s);
       if (chosen) {
         set_addelem(NoPivotRow, r);
@@ -972,7 +1195,7 @@ void ComputeBInverse(Amatrix A1, long lastrow,
   set_initialize(&RowSelected, mm);
   set_initialize(&ColSelected, nn);
   do {
-    SelectPivot2(A1, InvA1, LeastIndex, lastrow, RowSelected, ColSelected, &r, &s, &chosen);
+    SelectPivot2(A1, InvA1, MinIndex, lastrow, RowSelected, ColSelected, &r, &s, &chosen);
     if (chosen) {
       (*rank)++;
       if (debug)
@@ -1005,6 +1228,10 @@ void FindBasis(Amatrix A1,
   set_initialize(&ColSelected, nn);
   SetToIdentity(BasisInverse);
   if (debug) WriteBmatrix(stdout,BasisInverse);
+  if (DynamicWriteOn && !debug){
+    printf("*Initial set of rows:");
+    fprintf(writing,"*Initial set of rows:");
+  }
   do {   /* Find a set of rows for a basis */
       SelectPivot2(A1, BasisInverse, roword, mm, RowSelected, ColSelected, &r, &s, &chosen);
       if (debug && chosen) printf("Procedure FindBasis: pivot on (r,s) =(%ld, %ld).\n", r, s);
@@ -1019,11 +1246,19 @@ void FindBasis(Amatrix A1,
           WriteTableau(stdout,A1,BasisInverse,NonzeroRHS),
 	      printf("%3ldth row added to the initial set (%ldth elem)\n",  r, *rank);
 	    }
+	    if (DynamicWriteOn && !debug){
+	      printf(" %ld",  r);
+	      fprintf(writing, " %ld",  r);
+	    }
       } else {
         stop=TRUE;
       }
       if (*rank==nn) stop = TRUE;
   } while (!stop);
+  if (DynamicWriteOn && !debug){
+    printf("\n");
+    fprintf(writing,"\n");
+  }
   set_free(ColSelected);
 }
 
@@ -1097,7 +1332,24 @@ void SelectCrissCrossPivot(Amatrix X, Bmatrix T,
   }
 }
 
-void CrissCrossSolve(Amatrix A1,Bmatrix BasisInverse, 
+void CrissCrossMinimize(Amatrix A1,Bmatrix BasisInverse, 
+   rowrange OBJrow, colrange RHScol, LPStatusType *LPS,
+   double *optvalue, Arow sol, Arow dsol, colindex NBIndex,
+   rowrange *re, colrange *se, long *iter)
+{
+   colrange j;
+   
+   for (j=1; j<=nn; j++)
+     AA[OBJrow-1][j-1]=-AA[OBJrow-1][j-1];
+   CrissCrossMaximize(A1,BasisInverse, OBJrow, RHScol, 
+     LPS, optvalue, sol, dsol, NBIndex, re,  se, iter);
+   *optvalue=-*optvalue;
+   for (j=1; j<=nn; j++)
+     dsol[j-1]=-dsol[j-1];
+     AA[OBJrow-1][j-1]=-AA[OBJrow-1][j-1];
+}
+
+void CrissCrossMaximize(Amatrix A1,Bmatrix BasisInverse, 
    rowrange OBJrow, colrange RHScol, LPStatusType *LPS,
    double *optvalue, Arow sol, Arow dsol, colindex NBIndex,
    rowrange *re, colrange *se, long *iter)
@@ -1107,13 +1359,20 @@ When LP is dual-inconsistent then *se returns the evidence column.
 */
 {
   boolean stop, chosen;
-  long rank,k;
+  long rank;
   rowrange i,r,entering,leaving;
   colrange j,s;
   colset ColSelected;
   rowset RowSelected,Basis,Cobasis;
-  rowindex BasisFlag;
+  static rowindex BasisFlag;
+  static long mlast=0;
 
+  if (BasisFlag==NULL || mlast!=mm){
+     if (mlast!=mm) free(BasisFlag);   /* called previously with different mm */
+     BasisFlag=(long *) calloc(mm+1, sizeof *BasisFlag);  
+     /* initialize only for the first time or when a larger space is needed */
+     mlast=mm;
+  }
   *re=0; *se=0; *iter=0;
   rank = 0;
   stop = FALSE;
@@ -1124,7 +1383,7 @@ When LP is dual-inconsistent then *se returns the evidence column.
   set_initialize(&ColSelected, nn);
   set_addelem(RowSelected, OBJrow);
   set_addelem(ColSelected, RHScol);
-  for (i=0; i<=MMAX; i++) BasisFlag[i]=0;
+  for (i=0; i<=mm; i++) BasisFlag[i]=0;
   for (j=0; j<=NMAX; j++) NBIndex[j]=0;
   for (i=1; i<=mm; i++) {
     set_addelem(Basis,i);
@@ -1134,7 +1393,7 @@ When LP is dual-inconsistent then *se returns the evidence column.
   SetToIdentity(BasisInverse);
   if (debug) WriteBmatrix(stdout,BasisInverse);
   do {   /* Find a LP basis */
-      SelectPivot2(A1, BasisInverse, LeastIndex
+      SelectPivot2(A1, BasisInverse, MinIndex
       , mm, RowSelected, ColSelected, &r, &s, &chosen);
       if (debug && chosen) printf("Procedure FindBasis: pivot on (r,s) =(%ld, %ld).\n", r, s);
       if (chosen) {
@@ -1194,6 +1453,7 @@ When LP is dual-inconsistent then *se returns the evidence column.
       switch (*LPS){
         case Inconsistent: *re=r;
         case DualInconsistent: *se=s;
+        default: break;
       }
       stop=TRUE;
     }
@@ -1223,6 +1483,8 @@ When LP is dual-inconsistent then *se returns the evidence column.
     }
     if (debug) printf("CrissCrossSolve: LP is dual inconsistent.\n");
     break;
+
+  default:break;
   }
   set_free(ColSelected);
   set_free(RowSelected);
@@ -1239,9 +1501,22 @@ void WriteLPResult(FILE *f, LPStatusType LPS, double optval,
   fprintf(f,"*cdd LP Solver (Criss-Cross Method) Result\n");  
   fprintf(f,"*cdd input file : %s   (%4ld  x %4ld)\n",
 	  inputfile, minput, ninput);
+  if (Conversion==LPmax)
+    fprintf(f,"*maximization is chosen.\n");  
+  else if (Conversion==LPmin)
+    fprintf(f,"*minimization is chosen.\n");
+  else if (Conversion==InteriorFind){
+    fprintf(f,"*inerior point computation is chosen.\n");
+    fprintf(f,"*the following is the result of solving the LP:\n");
+    fprintf(f,"*   maximize      x_{d+1}\n");
+    fprintf(f,"*   s.t.    A x + x_{d+1}  <=  b.\n");
+    fprintf(f,"*Thus, the optimum value is zero     if the polyhedron has no interior point.\n");
+    fprintf(f,"*      the optimum value is negative if the polyhedron is empty.\n");
+    fprintf(f,"*      the LP is dual inconsistent   if the polyhedron admits unbounded inscribing balls.\n");
+ }
   switch (LPS){
   case Optimal:
-    fprintf(f,"LP status: a dual pair (x, y) of optimal solutions found.\n");
+    fprintf(f,"*LP status: a dual pair (x, y) of optimal solutions found.\n");
     fprintf(f,"begin\n");
     fprintf(f,"  primal_solution\n");
     for (j=1; j<nn; j++) {
@@ -1289,8 +1564,11 @@ void WriteLPResult(FILE *f, LPStatusType LPS, double optval,
     }
     fprintf(f,"end\n");
     break;
+
+  default:
+    break;
   }
-  fprintf(f,"* number of pivot operations = %ld\n", iter);
+  fprintf(f,"*number of pivot operations = %ld\n", iter);
 }
 
 
@@ -1307,12 +1585,12 @@ void FindInitialRays(rowset InitHyperplanes,
   
   set_initialize(&CandidateRows, mm);
   switch (HyperplaneOrder) {
-  case LargestIndex:
-    roworder = LargestIndex;
+  case MaxIndex:
+    roworder = MaxIndex;
     break;
 
-  case LeastIndex:
-    roworder = LeastIndex;
+  case MinIndex:
+    roworder = MinIndex;
     break;
 
   case MinCutoff:
@@ -1335,7 +1613,7 @@ void FindInitialRays(rowset InitHyperplanes,
     roworder = LexMax;
     break;
   }
-  if (InitBasisAtBottom==TRUE) roworder=LargestIndex;
+  if (InitBasisAtBottom==TRUE) roworder=MaxIndex;
   for (i = 1; i <= mm; i++)
     set_addelem(CandidateRows, i);      /*all rows are candidates for initial cone*/
   if (DynamicWriteOn)
@@ -1395,10 +1673,15 @@ void CreateNewRay(RayRecord *Ptr1, RayRecord *Ptr2, rowrange ii)
     NewRay[j] = Ptr1->Ray[j] * v2 + Ptr2->Ray[j] * v1;
   Normalize(NewRay);
   AddRay(NewRay);
+  if (debug){
+    WriteRayRecord(stdout, Ptr1);
+    WriteRayRecord(stdout, Ptr2);  
+    printf("create a new ray by eliminating %ld:\n",ii);
+    WriteRayRecord(stdout, LastRay);
+  }
 }
 
-
-void EvaluateARay(rowrange i)
+void EvaluateARay1(rowrange i)
 /* Evaluate the ith component of the vector  A x RD.Ray 
     and rearrange the linked list so that
     the infeasible rays with respect to  i  will be
@@ -1434,6 +1717,225 @@ void EvaluateARay(rowrange i)
       Ptr = Ptr->Next;
     }
   }
+}
+
+void EvaluateARay2(rowrange i)
+/* Evaluate the ith component of the vector  A x RD.Ray 
+   and rearrange the linked list so that
+   the infeasible rays with respect to  i  will be
+   placed consecutively from First. Also for all feasible rays,
+   "positive" rays and "zero" rays will be placed consecutively.
+ */
+{
+  colrange j;
+  double temp;
+  RayRecord *Ptr, *NextPtr;
+  boolean zerofound=FALSE,negfound=FALSE,posfound=FALSE;
+  boolean localdebug=FALSE;
+
+  PosHead=NULL;ZeroHead=NULL;NegHead=NULL;
+  PosLast=NULL;ZeroLast=NULL;NegLast=NULL;
+  Ptr = FirstRay;
+  while (Ptr != NULL) {
+    NextPtr=Ptr->Next;  /* remember the Next record */
+    Ptr->Next=NULL;     /* then clear the Next pointer */
+    temp = 0.0;
+    for (j = 0; j < nn; j++)
+      temp += AA[i - 1][j] * Ptr->Ray[j];
+    Ptr->ARay = temp;
+    if ( temp < -zero) {
+      if (!negfound){
+        negfound=TRUE;
+        NegHead=Ptr;
+        NegLast=Ptr;
+      }
+      else{
+        Ptr->Next=NegHead;
+        NegHead=Ptr;
+      }
+    }
+    else if (temp > zero){
+      if (!posfound){
+        posfound=TRUE;
+        PosHead=Ptr;
+        PosLast=Ptr;
+      }
+      else{  
+        Ptr->Next=PosHead;
+        PosHead=Ptr;
+       }
+    }
+    else {
+      if (!zerofound){
+        zerofound=TRUE;
+        ZeroHead=Ptr;
+        ZeroLast=Ptr;
+      }
+      else{
+        Ptr->Next=ZeroHead;
+        ZeroHead=Ptr;
+      }
+    }
+    Ptr=NextPtr;
+  }
+  /* joining three neg, pos and zero lists */
+  if (negfound){                 /* -list nonempty */
+    FirstRay=NegHead;
+    if (posfound){               /* -list & +list nonempty */
+      NegLast->Next=PosHead;
+      if (zerofound){            /* -list, +list, 0list all nonempty */
+        PosLast->Next=ZeroHead;
+        LastRay=ZeroLast;
+      } 
+      else{                      /* -list, +list nonempty but  0list empty */
+        LastRay=PosLast;      
+      }
+    }
+    else{                        /* -list nonempty & +list empty */
+      if (zerofound){            /* -list,0list nonempty & +list empty */
+        NegLast->Next=ZeroHead;
+        LastRay=ZeroLast;
+      } 
+      else {                      /* -list nonempty & +list,0list empty */
+        LastRay=NegLast;
+      }
+    }
+  }
+  else if (posfound){            /* -list empty & +list nonempty */
+    FirstRay=PosHead;
+    if (zerofound){              /* -list empty & +list,0list nonempty */
+      PosLast->Next=ZeroHead;
+      LastRay=ZeroLast;
+    } 
+    else{                        /* -list,0list empty & +list nonempty */
+      LastRay=PosLast;
+    }
+  }
+  else{                          /* -list,+list empty & 0list nonempty */
+    FirstRay=ZeroHead;
+    LastRay=ZeroLast;
+  }
+  ArtificialRay->Next=FirstRay;
+  LastRay->Next=NULL;
+}
+
+void DeleteNegativeRays(void)
+/* Eliminate the infeasible rays with respect to  i  which
+   are supposed to be consecutive from the head of the RayRecord list,
+   and sort the zero list assumed to be consecutive at the
+   end of the list.
+ */
+{
+  rowrange fii,fiitest;
+  double temp;
+  RayRecord *Ptr, *PrevPtr, *NextPtr, *ZeroPtr1, *ZeroPtr0;
+  boolean found, completed, zerofound=FALSE,negfound=FALSE,posfound=FALSE;
+  boolean localdebug=FALSE;
+  
+  PosHead=NULL;ZeroHead=NULL;NegHead=NULL;
+  PosLast=NULL;ZeroLast=NULL;NegLast=NULL;
+
+  /* Delete the infeasible rays  */
+  PrevPtr= ArtificialRay;
+  Ptr = FirstRay;
+  ZeroRayCount=0;
+  if (PrevPtr->Next != Ptr) 
+    printf("Error at DeleteNegativeRays: ArtificialRay does not point the FirstRay.\n");
+  completed=FALSE;
+  while (Ptr != NULL && !completed){
+    if ( (Ptr->ARay) < -zero ){
+      Eliminate(&PrevPtr);
+      Ptr=PrevPtr->Next;
+    }
+    else{
+      completed=TRUE;
+    }
+  }
+  
+  /* Sort the zero rays */
+  Ptr = FirstRay;
+  while (Ptr != NULL) {
+    NextPtr=Ptr->Next;  /* remember the Next record */
+    temp = Ptr->ARay;
+    if (localdebug) printf("Ptr->ARay : %5.3f \n", temp);
+    if ( temp < -zero) {
+      if (!negfound){
+        printf("Error: An infeasible ray found after their removal\n");
+        negfound=TRUE;
+      }
+    }
+    else if (temp > zero){
+      if (!posfound){
+        posfound=TRUE;
+        PosHead=Ptr;
+        PosLast=Ptr;
+      }
+      else{  
+        PosLast=Ptr;
+       }
+    }
+    else {
+      ZeroRayCount++;
+      if (!zerofound){
+        zerofound=TRUE;
+        ZeroHead=Ptr;
+        ZeroLast=Ptr;
+        ZeroLast->Next=NULL;
+      }
+      else{/* Find a right position to store the record sorted w.r.t. FirstInfeasIndex */
+        fii=Ptr->FirstInfeasIndex; 
+        found=FALSE;
+        ZeroPtr1=NULL;
+        for (ZeroPtr0=ZeroHead; !found && ZeroPtr0!=NULL ; ZeroPtr0=ZeroPtr0->Next){
+          fiitest=ZeroPtr0->FirstInfeasIndex;
+          if (fiitest >= fii){
+            found=TRUE;
+          }
+          else ZeroPtr1=ZeroPtr0;
+        }
+        /* printf("insert position found \n %d  index %ld\n",found, fiitest); */
+        if (!found){           /* the new record must be stored at the end of list */
+          ZeroLast->Next=Ptr;
+          ZeroLast=Ptr;
+          ZeroLast->Next=NULL;
+        }
+        else{
+          if (ZeroPtr1==NULL){ /* store the new one at the head, and update the head ptr */
+            /* printf("Insert at the head\n"); */
+            Ptr->Next=ZeroHead;
+            ZeroHead=Ptr;
+          }
+          else{                /* store the new one inbetween ZeroPtr1 and 0 */
+            /* printf("Insert inbetween\n");  */
+            Ptr->Next=ZeroPtr1->Next;
+            ZeroPtr1->Next=Ptr;
+          }
+        }
+        /*
+        Ptr->Next=ZeroHead;
+        ZeroHead=Ptr;
+        */
+      }
+    }
+    Ptr=NextPtr;
+  }
+  /* joining the pos and zero lists */
+  if (posfound){            /* -list empty & +list nonempty */
+    FirstRay=PosHead;
+    if (zerofound){              /* +list,0list nonempty */
+      PosLast->Next=ZeroHead;
+      LastRay=ZeroLast;
+    } 
+    else{                        /* 0list empty & +list nonempty */
+      LastRay=PosLast;
+    }
+  }
+  else{                          /* +list empty & 0list nonempty */
+    FirstRay=ZeroHead;
+    LastRay=ZeroLast;
+  }
+  ArtificialRay->Next=FirstRay;
+  LastRay->Next=NULL;
 }
 
 void FeasibilityIndices(long *fnum, long *infnum, rowrange i)
@@ -1475,7 +1977,7 @@ boolean LexSmaller(double *v1, double *v2)
       determined = TRUE;
     } else
       j++;
-  } while (!(determined) && (j < nn));
+  } while (!(determined) && (j <= nn));
   return smaller;
 }
 
@@ -1501,21 +2003,30 @@ void CopyArow(double *vcopy, double *v)
   }
 }
 
-void AddNewHyperplane(rowrange hnew)
+void AddNewHyperplane1(rowrange hnew)
+/* This procedure 1 must be used with PreorderedRun=FALSE 
+   This procedure is the most elementary implementation of
+   DD and can be used with any type of ordering, including
+   dynamic ordering of rows, e.g. MaxCutoff, MinCutoff.
+   The memory requirement is minimum because it does not
+   store any adjacency among the rays.
+*/
 {
   RayRecord *RayPtr0, *RayPtr1, *RayPtr2, *RayPtr2s, *RayPtr3;
   long pos1, pos2;
   double prevprogress, progress, value1, value2;
   boolean adj, equal, completed;
 
-  EvaluateARay(hnew);        /*Check feasibility of rays w.r.t. hnew 
-                               and put all infeasible ones consecutively */
+  EvaluateARay1(hnew);  
+   /*Check feasibility of rays w.r.t. hnew 
+     and put all infeasible ones consecutively */
+
   RayPtr0 = ArtificialRay;   /*Pointer pointing RayPrt1*/
   RayPtr1 = FirstRay;        /*1st hnew-infeasible ray to scan and compare with feasible rays*/
   value1 = FirstRay->ARay;
   if (value1 > -zero) {
     if (RayCount==FeasibleRayCount) CompStatus=AllFound;
-    goto _L99;               /* Sicne there is no hnew-infeasible ray and nothing to do */
+    goto _L99;        /* Sicne there is no hnew-infeasible ray and nothing to do */
   }
   else {
     RayPtr2s = RayPtr1->Next;/* RayPtr2s must point the first feasible ray */
@@ -1588,4 +2099,72 @@ void AddNewHyperplane(rowrange hnew)
   if (RayCount==FeasibleRayCount) CompStatus=AllFound;
   _L99:;
 }
+
+void AddNewHyperplane2(rowrange hnew)
+/* This procedure must be used under PreOrderedRun mode */
+{
+  RayRecord *RayPtr0,*RayPtr1, *RayPtr2;
+  AdjacencyRecord *EdgePtr, *EdgePtr0;
+  long pos1;
+  rowrange fii1, fii2;
+  boolean localdebug=FALSE;
+
+  EvaluateARay2(hnew);
+   /* Check feasibility of rays w.r.t. hnew 
+      and sort them. ( -rays, +rays, 0rays)*/
+
+  if (PosHead==NULL && ZeroHead==NULL) {
+    FirstRay=NULL;
+    ArtificialRay->Next=FirstRay;
+    CompStatus=RegionEmpty;
+    RayCount=0;
+    VertexCount=0;
+    goto _L99;   /* All rays are infeasible, and the computation must stop */
+  }
+
+  if (localdebug){
+    pos1=0;
+    printf("(pos, FirstInfeasIndex, A Ray)=\n");
+    for (RayPtr0=FirstRay; RayPtr0!=NULL; RayPtr0=RayPtr0->Next){
+      pos1++;
+      printf("(%ld,%ld,",pos1,RayPtr0->FirstInfeasIndex);
+      WriteReal(stdout,RayPtr0->ARay); 
+      printf(") ");
+   }
+    printf("\n");
+  }
+  
+  if (ZeroHead==NULL) ZeroHead=LastRay;
+
+  EdgePtr=Edges[Iteration];
+  while (EdgePtr!=NULL){
+    RayPtr1=EdgePtr->Ray1;
+    RayPtr2=EdgePtr->Ray2;
+    fii1=RayPtr1->FirstInfeasIndex;   
+    CreateNewRay(RayPtr1, RayPtr2, hnew);
+    fii2=LastRay->FirstInfeasIndex;
+    if (fii1 != fii2) ConditionalAddEdge(RayPtr1,LastRay,PosHead);
+    EdgePtr0=EdgePtr;
+    EdgePtr=EdgePtr->Next;
+    free(EdgePtr0);
+    EdgeCount--;
+  }
+  
+  DeleteNegativeRays();
+    
+  set_addelem(AddedHyperplanes, hnew);
+
+  if (Iteration<mm){
+    if (ZeroHead!=NULL && ZeroHead!=LastRay){
+      if (ZeroRayCount>=200 && DynamicWriteOn) printf("*New edges being scanned...\n");
+      UpdateEdges(ZeroHead,LastRay);
+    }
+    if (localdebug) printf("*Edges currently stored = %ld\n", EdgeCount);
+  }
+
+  if (RayCount==FeasibleRayCount) CompStatus=AllFound;
+_L99:;
+}
+
+/* end of cddarith.c */
 

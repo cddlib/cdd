@@ -15,4 +15,5 @@ begin
  1  0  0  0  0  0 -1
 end
 incidence 
-nondegenerate
+adjacency
+

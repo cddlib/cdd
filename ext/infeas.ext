@@ -1,20 +1,16 @@
 * cdd: Double Description Method C-Code:Version C0.51 (February 12, 1994)
 * Copyright (C) 1994, Komei Fukuda, fukuda@dma.epfl.ch
-*Input File:ex1.ine   (   4  x    3)
+*Input File:infeas.ine   (  13  x    7)
 *HyperplaneOrder: LexMin
 *Degeneracy preknowledge for computation: None (possible degeneracy)
 *Vertex/Ray enumeration is chosen.
-*Computation starts     at Wed Feb 16 11:58:30 1994
-*            terminates at Wed Feb 16 11:58:30 1994
+*Computation completed at Iteration    8 because the region found empty.
+*Computation starts     at Wed Feb 16 10:28:53 1994
+*            terminates at Wed Feb 16 10:28:53 1994
 *Total processor time = 0 seconds
 *                     = 0 hour 0 min 0 sec
 *FINAL RESULT:
-*Number of Vertices =       3,   Rays =       2
+*Number of Vertices =       0,   Rays =       0
 begin
-        5      3    real
-  1 -1  4
-  0  2  1
-  1  0  3
-  0  1  2
-  1 -1 10
+        0      7    real
 end
