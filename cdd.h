@@ -1,6 +1,6 @@
 /* cdd.h: Header file for cdd.c 
    written by Komei Fukuda, fukuda@dma.epfl.ch
-   Version 0.36, Jan. 23, 1994 
+   Version 0.38, Jan. 31, 1994 
 */
 
 /* cdd.c : C-Implementation of the double description method for
@@ -19,15 +19,17 @@ typedef set_type rowset;  /* set_type defined in setoper.h */
 typedef set_type colset;
 typedef long rowindex[MMAX+1];
 typedef long colindex[NMAX+1];
-typedef double Amatrix[MMAX][NMAX];
+typedef double *Amatrix[MMAX];
 typedef double Arow[NMAX];
-typedef double Bmatrix[NMAX][NMAX];
+typedef double *Bmatrix[NMAX];
 typedef char DataFileType[filenamelen];
+typedef char LineType[linelenmax];
+typedef char WordType[wordlenmax];
 
 typedef struct RayRecord {
   double *Ray;
   rowset ZeroSet;
-  double ARay;   /*temporary area to store some row of A*Ray*/
+  double ARay;   /* temporary area to store some row of A*Ray */
   struct RayRecord *Next;
 } RayRecord;
 
@@ -49,7 +51,7 @@ typedef enum {
   ZeroRHS, NonzeroRHS
 } InequalityType;
 typedef enum {
-  IneToExt, ExtToIne, Projection, LPmax, LPmin
+  IneToExt, ExtToIne, Projection, LPmax, LPmin, InteriorFind
 } ConversionType;
 typedef enum {
   IncOff=0, IncCardinality, IncSet
@@ -58,7 +60,12 @@ typedef enum {
   AdjOff=0, OutputAdjacency, InputAdjacency, IOAdjacency
 } AdjacencyOutputType;
 typedef enum {
-  DimensionTooLarge, LowColumnRank, ImproperInputFormat, DependentMarkedSet, None
+  Auto, SemiAuto, Manual
+} FileInputModeType;   
+   /* Auto if a input filename is specified by command arguments */
+typedef enum {
+  DimensionTooLarge, LowColumnRank, ImproperInputFormat, DependentMarkedSet, 
+  FileNotFound, None
 } ErrorType;
 typedef enum {
   InProgress, AllFound, RegionEmpty
@@ -67,13 +74,8 @@ typedef enum {
   LPSundecided, Optimal, Inconsistent, DualInconsistent, Unbounded, DualUnbounded
 } LPStatusType;
 
-typedef char LineType[linelenmax];
-typedef char WordType[wordlenmax];
-
 extern long minput, ninput;   /*size of input data [b -A] */
 extern long mm, nn;   /*size of the homogenous system to be solved by dd*/
-extern rowrange OBJrow;
-extern colrange RHScol;
 extern long projdim;  /*dimension of orthogonal preprojection */
 extern colset projvars;   /*set of variables spanning the space of preprojection, 
      i.e. the remaining variables are to be removed*/
@@ -84,7 +86,10 @@ extern long RayCount, FeasibleRayCount, TotalRayCount, VertexCount;
 extern boolean DynamicWriteOn, DynamicRayWriteOn, LogWriteOn, debug;
 extern Amatrix AA;
 extern Bmatrix InitialRays;
-extern Arow LPcost;  /* LP cost vector to be maximized  */
+extern LPStatusType LPStatus;
+extern colrange RHScol;   /* LP RHS column */
+extern rowrange OBJrow;   /* LP OBJ row */
+extern Arow LPcost;
 extern RayRecord *ArtificialRay, *FirstRay, *LastRay;
 extern boolean inputsuccessful;
 extern HyperplaneOrderType HyperplaneOrder;
@@ -99,14 +104,17 @@ extern ConversionType Conversion;
 extern IncidenceOutputType IncidenceOutput;
 extern AdjacencyOutputType AdjacencyOutput;
 extern ErrorType Error;
-extern DataFileType inputfile,outputfile,icdfile,adjfile,logfile;
+extern FileInputModeType FileInputMode;
+extern DataFileType inputfile,ifilehead,ifiletail,
+     outputfile,projfile, icdfile,adjfile,logfile;
+
 extern FILE *reading, *writing, *writing_icd,*writing_adj, *writing_log;
 extern time_t starttime, endtime;
 
-void SetInputFile(FILE **);
-void SetWriteFile(FILE **);
-void SetIncidenceFile(FILE **);
-void SetLogFile(FILE **);
+void SetInputFile(FILE **, boolean *);
+void SetWriteFile(FILE **, DataFileType, char, char *);
+
+
 void SetNumberType(char *);
 void ProcessCommandLine(char *);
 void AmatrixInput(boolean *);
@@ -123,30 +131,39 @@ void AddRay(double *);
 void AddArtificialRay(void);
 void Normalize(double *);
 void ZeroIndexSet(double *, long *);
-void CopyBmatrix(double (*T)[NMAX], double (*TCOPY)[NMAX]);
-void SelectPivot1(double (*X)[NMAX], HyperplaneOrderType,
+void CopyBmatrix(Bmatrix T, Bmatrix TCOPY);
+void SelectPivot1(Amatrix, HyperplaneOrderType,
    rowrange, long *,long *, rowrange *, colrange *,boolean *);
-double TableauEntry(double (*X)[NMAX], double (*T)[NMAX], rowrange, colrange);
-void WriteTableau(FILE *,double (*X)[NMAX], double (*T)[NMAX],InequalityType);
-void SelectPivot2(double (*X)[NMAX], double (*T)[NMAX],
+double TableauEntry(Amatrix, Bmatrix T, rowrange, colrange);
+void WriteTableau(FILE *,Amatrix, Bmatrix T,InequalityType);
+void SelectPivot2(Amatrix, Bmatrix T,
    HyperplaneOrderType,rowrange, long *,long *, rowrange *, colrange *,boolean *);
-void GausianColumnPivot1(double (*X)[NMAX], rowrange, colrange,rowrange);
-void GausianColumnPivot2(double (*X)[NMAX], double (*T)[NMAX],rowrange, colrange);
-void InitializeBmatrix(double (*T)[NMAX]);
-void WriteBmatrix(FILE *, double (*T)[NMAX]);
+void GausianColumnPivot1(Amatrix, rowrange, colrange,rowrange);
+void GausianColumnPivot2(Amatrix, Bmatrix T,rowrange, colrange);
+void InitializeBmatrix(Bmatrix T);
+void SetToIdentity(Bmatrix T);
+void free_Bmatrix(Bmatrix T);
+void WriteBmatrix(FILE *, Bmatrix T);
 void ReduceAA(long *, long *);
-void DualizeAA(double (*T)[NMAX]);
+void DualizeAA(Bmatrix T);
+void EnlargeAAforInteriorFinding(void);
 void WriteSubMatrixOfAA(FILE *,long *, long *, InequalityType);
-void WriteAmatrix(FILE *, double (*A)[NMAX], long, long, InequalityType);
-void ComputeRank(double (*A1)[NMAX], long *, long *);
-void ComputeBInverse(double (*A1)[NMAX], long, double (*InvA1)[NMAX], long *);
-void FindBasis(double (*A1)[NMAX], HyperplaneOrderType, long *, long *,
-   double (*BasisInverse)[NMAX], long *);
-void SelectCrissCrossPivot(double (*X)[NMAX], double (*T)[NMAX],
+void WriteAmatrix(FILE *, Amatrix, long, long, InequalityType);
+void ComputeRank(Amatrix, long *, long *);
+void ComputeBInverse(Amatrix, long, Bmatrix InvA1, long *);
+void FindBasis(Amatrix, HyperplaneOrderType, long *, long *,
+   Bmatrix BasisInverse, long *);
+void SelectCrissCrossPivot(Amatrix, Bmatrix T,
   long bflag[], rowrange,colrange,rowrange *,colrange *,
   boolean *, LPStatusType *);
-void CrissCrossSolve(double (*A1)[NMAX],double (*BasisInverse)[NMAX],
-   rowrange, colrange, double *);
+void CrissCrossSolve(Amatrix,Bmatrix BasisInverse,
+  rowrange, colrange, 
+  LPStatusType *, double *optvalue, Arow, Arow, colindex,
+  rowrange *, colrange *, long *);
+void WriteLPResult(FILE *, LPStatusType, double, 
+  Arow, Arow, colindex, rowrange, colrange, long);
+void FindInitialRays(rowset InitHyperplanes,
+			    Bmatrix InitRays, boolean *found);
 void CheckAdjacency1(RayRecord **, RayRecord **,boolean *);
 void CheckAdjacency2(RayRecord **, RayRecord **,boolean *);
 void CheckEquality(RayRecord **, RayRecord **, boolean *);

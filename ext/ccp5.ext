@@ -1,69 +1,73 @@
-* pdd: Double Description Method Code:Version 0.2 (November 5, 1993)
-* Copyright 1993, Komei Fukuda, EPFL, Switzerland  fukuda@dma.epfl.ch
-Input File:ccp5.ine         (  16  x   11)
-HyperplaneOrder: MinCutoff
-AdjacencyTest: Combinatorial
-Computation starts     at 93/11/08   11:31:24  
-            terminates at 93/11/08   11:31:24  
-Hull computation is chosen, and the output is an inequality system
-FINAL RESULT:
-Number of Facets =      56
+* cdd: Double Description Method C-Code:Version C0.38 (January 31, 1994)
+* Copyright (C) 1994, Komei Fukuda, fukuda@dma.epfl.ch
+*Input File:ccp5.ine   (  16  x   11)
+*HyperplaneOrder: MinCutoff
+*AdjacencyTest: Combinatorial
+*Degeneracy preknowledge for computation: None (possible degeneracy)
+*Hull computation is chosen.
+*Computation starts     at Wed Feb  2 10:22:53 1994
+*            terminates at Wed Feb  2 10:22:53 1994
+*Total processor time = 0 seconds
+*                     = 0 hour 0 min 0 sec
+*Since hull computation is chosen, the output is a minimal inequality system
+*FINAL RESULT:
+*Number of Facets =      56
 begin
        56     11    real
-  2  0  0  0  0  0  0  0 -1 -1 -1
-  2  0  0  0  0  0 -1 -1  0  0 -1
-  2  0  0  0  0 -1  0 -1  0 -1  0
-  0  1  0  0  1  0  0 -1  0  0  0
-  0  0  1  0  1  0  0  0  0 -1  0
-  0  0  0  1  1  0  0  0  0  0 -1
   2  1  1  1  1 -1 -1 -1 -1 -1 -1
   0  1  1  0  0 -1  0  0  0  0  0
   0  1  0  1  0  0 -1  0  0  0  0
+  0  1  0  0  1  0  0 -1  0  0  0
   0  0  1  1  0  0  0  0 -1  0  0
+  0  0  1  0  1  0  0  0  0 -1  0
+  0  0  0  1  1  0  0  0  0  0 -1
   2  0  0  0  0 -1 -1  0 -1  0  0
-  0  0  1 -1  0  0  0  0  1  0  0
-  0  0  0  0  0  1 -1  0  1  0  0
+  2  0  0  0  0 -1  0 -1  0 -1  0
+  2  0  0  0  0  0 -1 -1  0  0 -1
   0  0  0  0  0  0  0  0  1 -1  1
-  0  0  0  0  0  0  0  0  1  1 -1
-  0  0  0  0  0 -1  1  0  1  0  0
-  0  0 -1  1  0  0  0  0  1  0  0
-  2  0  0 -1 -1  0  0  0  0  0 -1
-  2 -1  0 -1  0  0 -1  0  0  0  0
-  0  1  0 -1  0  0  1  0  0  0  0
-  0  0  0  0  0  1  1  0 -1  0  0
+  0  0  0  1 -1  0  0  0  0  0  1
   0  0  0  0  0  0  1 -1  0  0  1
-  2  0 -1 -1  0  0  0  0 -1  0  0
+  0  0  0  0  0  0 -1  1  0  0  1
   0  0  0 -1  1  0  0  0  0  0  1
   0  0  0  0  0  0  0  0 -1  1  1
-  0  1  1 -1  1 -1  1 -1  1 -1  1
+  2  0  0  0  0  0  0  0 -1 -1 -1
+  2  0  0 -1 -1  0  0  0  0  0 -1
   0  0  0  0  0  0  1  1  0  0 -1
-  0 -1  0  1  0  0  1  0  0  0  0
-  0  0  0  1 -1  0  0  0  0  0  1
-  0  0  0  0  0  0 -1  1  0  0  1
+  0  1  0  0 -1  0  0  1  0  0  0
+  0  0  0  0  0  1  0  1  0 -1  0
   2  0 -1  0 -1  0  0  0  0 -1  0
+  0  1  1  1 -1 -1 -1  1 -1  1  1
+  0  0  0  0  0  0  0  0  1  1 -1
+  0  0  1  0 -1  0  0  0  0  1  0
+  0  0  0  0  0  1  0 -1  0  1  0
   2 -1  0  0 -1  0  0 -1  0  0  0
+  0  0  0  0  0 -1  0  1  0  1  0
+  0  0 -1  0  1  0  0  0  0  1  0
+  0 -1  0  0  1  0  0  1  0  0  0
+  2 -1 -1 -1  1 -1 -1  1 -1  1  1
+  0 -1  1  1 -1  1  1 -1 -1  1  1
+  0  1 -1  1 -1  1 -1  1  1 -1  1
+  0  1  1 -1 -1 -1  1  1  1  1 -1
+  0  1  0 -1  0  0  1  0  0  0  0
+  0  1 -1  0  0  1  0  0  0  0  0
+  0  0  0  0  0  1  1  0 -1  0  0
+  2  0 -1 -1  0  0  0  0 -1  0  0
+  0  0  1 -1  0  0  0  0  1  0  0
+  0  0  0  0  0  1 -1  0  1  0  0
+  0 -1  1  0  0  1  0  0  0  0  0
+  2 -1  0 -1  0  0 -1  0  0  0  0
+  0  0  0  0  0 -1  1  0  1  0  0
+  0  0 -1  1  0  0  0  0  1  0  0
+  0 -1  0  1  0  0  1  0  0  0  0
   2 -1 -1  0  0 -1  0  0  0  0  0
   2 -1 -1  1 -1 -1  1 -1  1 -1  1
-  0  1 -1  0  0  1  0  0  0  0  0
-  0  0  0  0  0  1  0 -1  0  1  0
-  0  0 -1  0  1  0  0  0  0  1  0
-  0  1 -1 -1  1  1  1 -1 -1  1  1
-  0  0  0  0  0  1  0  1  0 -1  0
-  0 -1  1  0  0  1  0  0  0  0  0
-  0 -1  0  0  1  0  0  1  0  0  0
+  0 -1 -1  1  1 -1  1  1  1  1 -1
+  2 -1  1 -1 -1  1 -1 -1  1  1 -1
   0 -1  1 -1  1  1 -1  1  1 -1  1
-  0  1  0  0 -1  0  0  1  0  0  0
-  0  0  1  0 -1  0  0  0  0  1  0
-  0  0  0  0  0 -1  0  1  0  1  0
-  0  1  1 -1 -1 -1  1  1  1  1 -1
-  6 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+  2  1 -1 -1 -1  1  1  1 -1 -1 -1
+  0  1 -1 -1  1  1  1 -1 -1  1  1
   0  1 -1  1  1  1 -1 -1  1  1 -1
   0 -1  1  1  1  1  1  1 -1 -1 -1
-  0  1  1  1 -1 -1 -1  1 -1  1  1
-  2 -1  1 -1 -1  1 -1 -1  1  1 -1
-  0  1 -1  1 -1  1 -1  1  1 -1  1
-  0 -1 -1  1  1 -1  1  1  1  1 -1
-  2  1 -1 -1 -1  1  1  1 -1 -1 -1
-  0 -1  1  1 -1  1  1 -1 -1  1  1
-  2 -1 -1 -1  1 -1 -1  1 -1  1  1
+  6 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+  0  1  1 -1  1 -1  1 -1  1 -1  1
 end

@@ -1,6 +1,6 @@
 /* cddarith.c:  Floating Point Arithmetic Procedures for cdd.c
    written by Komei Fukuda, fukuda@dma.epfl.ch
-   Version 0.36, Jan. 23, 1994 
+   Version 0.38, Jan. 31, 1994 
 */
 
 /* cdd.c : C-Implementation of the double description method for
@@ -10,7 +10,7 @@
    the manual cddman.tex for detail.
 */
 
-#include "setoper.h"      /* set operation library header (Ver. Dec.8,1993 or later) */
+#include "setoper.h"  /* set operation library header (Ver. Jan.23 ,1994 or later) */
 #include "cdddef.h"
 #include "cdd.h"
 #include <stdio.h>
@@ -24,8 +24,6 @@ void ProcessCommandLine(char *line)
   colrange j;
   long var,msize;
   double cost;
-  char *command;
-
 
   if (strncmp(line, "dynout_off", 10)==0) {
     DynamicRayWriteOn = FALSE;
@@ -102,11 +100,9 @@ void ProcessCommandLine(char *line)
   }
   if (strncmp(line, "partial_enum", 12)==0 && !PartialEnumeration) {
     fscanf(reading,"%ld", &msize);
-    printf("Partial enumeration: # of restriction variables = %ld\n",msize);
     for (j=1;j<=msize;j++) {
       fscanf(reading,"%ld",&var);
-      printf(" %ld",var);
-      set_addelem(MarkedSet,var);
+       set_addelem(MarkedSet,var);
     }
     printf("\n");
     if (Conversion==Projection) {
@@ -136,7 +132,7 @@ void ProcessCommandLine(char *line)
     for (j=0;j<nn;j++) {
       fscanf(reading,"%lf",&cost);
       LPcost[j]=cost;
-      if (debug) printf(" cost[%ld] = %lg\n",j,LPcost[j]);
+      if (debug) printf(" cost[%ld] = %.9E\n",j,LPcost[j]);
     }
     Conversion=LPmax;
     if (debug) {
@@ -144,18 +140,29 @@ void ProcessCommandLine(char *line)
     }
     return;
   }
+  if (strncmp(line, "find_interior", 13)==0 && Conversion != InteriorFind) {
+    printf("Interior finding option is chosen.\n");
+    Conversion=InteriorFind;
+    return;
+  }
 }
 
 void AmatrixInput(boolean *successful)
 {
   long i,j;
-  double value,value1,value2;
-  boolean found=FALSE,decided=FALSE;
+  double value;
+  long value1,value2;
+  boolean found=FALSE,decided=FALSE, fileopened;
   char command[wordlenmax], numbtype[wordlenmax], stemp[wordlenmax];
 
   *successful = FALSE;
 
-  SetInputFile(&reading);
+  SetInputFile(&reading, &fileopened);
+  if (!fileopened){
+    Error=FileNotFound;
+    goto _L99;
+  }
+
   while (!found)
   {
    	  if (fscanf(reading,"%s",command)==EOF) {
@@ -180,7 +187,7 @@ void AmatrixInput(boolean *successful)
   		decided=TRUE;
  	}
  	for (j=2; j<=ninput; j++) {
-  		fscanf(reading,"%ld", &value);
+  		fscanf(reading,"%lf", &value);
   	}
   }
   if (Inequality==NonzeroRHS) {
@@ -195,7 +202,16 @@ void AmatrixInput(boolean *successful)
     Error = DimensionTooLarge;
     goto _L99;
   }
+  
+  PartialEnumeration = FALSE;
+  set_initialize(&MarkedSet, minput+1);
+
+  while (!feof(reading)) {
+    fscanf(reading,"%s", command);
+    ProcessCommandLine(command);
+  } 
   fclose(reading);
+
   reading=fopen(inputfile, "r");
   found=FALSE;
   while (!found)
@@ -213,37 +229,30 @@ void AmatrixInput(boolean *successful)
   }
   fscanf(reading, "%ld %ld %s", &value1, &value2, stemp);
   for (i = 1; i <= minput; i++) {
+    AA[i-1]=(double *) calloc(ninput, sizeof value);
     for (j = 1; j <= ninput; j++) {
       fscanf(reading, "%lf", &value);
       if (Inequality==NonzeroRHS) 
-      	AA[i - 1][j - 1] = value;
+      	AA[i-1][j - 1] = value;
       else if (j>=2) {
-        AA[i - 1][j - 2] = value;
+        AA[i-1][j - 2] = value;
 	  }
-	  if (debug)
-	    printf("a(%3ld,%5ld) = %10.4lf\n",i,j,value);
+	  if (debug) printf("a(%3ld,%5ld) = %10.4f\n",i,j,value);
     }  /*of j*/
-    if (debug)
-      putchar('\n');
+    if (debug) putchar('\n');
   }  /*of i*/
   
-  PartialEnumeration = FALSE;
-  set_initialize(&MarkedSet, minput+1);
-
-  while (!feof(reading)) {
-    fscanf(reading,"%s", command);
-    ProcessCommandLine(command);
-  } 
   switch (Conversion) {
   case IneToExt:
     mm = minput + 1;
+    AA[mm-1]=(double *) calloc(ninput, sizeof value);
     for (j = 1; j <= ninput; j++) {   /*artificial row for x_1 >= 0*/
       if (j == 1)
-	    AA[mm - 1][j - 1] = 1.0;
+        AA[mm - 1][j - 1] = 1.0;
       else
-	    AA[mm - 1][j - 1] = 0.0;
-	}
-	break;
+        AA[mm - 1][j - 1] = 0.0;
+    }
+    break;
 
   case ExtToIne:
     mm = minput;
@@ -253,6 +262,7 @@ void AmatrixInput(boolean *successful)
     mm = minput + 1;
     OBJrow=mm;
     RHScol=1L;
+    AA[mm-1]=(double *) calloc(ninput, sizeof value);
     for (j = 1; j <= ninput; j++) {   /*objective row */
  	   AA[mm - 1][j - 1] = LPcost[j-1];
  	}
@@ -263,7 +273,7 @@ void AmatrixInput(boolean *successful)
   } 
   *successful = TRUE;
 _L99: ;
-  fclose(reading);
+  if (reading!=NULL) fclose(reading);
 }
 
 void WriteRayRecord(FILE *f, RayRecord *RR)
@@ -455,19 +465,17 @@ void ZeroIndexSet(double *x, rowset ZS)
   }
 }
 
-void CopyBmatrix(double (*T)[NMAX], double (*TCOPY)[NMAX])
+void CopyBmatrix(Bmatrix T, Bmatrix TCOPY)
 {
-  colrange j1, j2;
+  colrange j;
 
-  for (j1 = 1; j1 <= nn; j1++) {
-    for (j2 = 1; j2 <= nn; j2++) {
-      TCOPY[j1 - 1][j2 - 1] = T[j1 - 1][j2 - 1];
-    }
+  for (j=0; j < nn; j++) {
+    TCOPY[j] = T[j];
   }
 }
 
 
-void SelectPivot1(double (*X)[NMAX], HyperplaneOrderType roworder,
+void SelectPivot1(Amatrix X, HyperplaneOrderType roworder,
             rowrange rowmax, long *NopivotRow,
 			long *NopivotCol, rowrange *r, colrange *s,
 			boolean *selected)
@@ -478,7 +486,6 @@ void SelectPivot1(double (*X)[NMAX], HyperplaneOrderType roworder,
 {
   boolean stop;
   rowrange rtemp;
-  colrange stemp;
   rowset rowexcluded;
 
   stop = FALSE;
@@ -514,7 +521,7 @@ void SelectPivot1(double (*X)[NMAX], HyperplaneOrderType roworder,
   set_free(rowexcluded);
 }
 
-double TableauEntry(double (*X)[NMAX], double (*T)[NMAX],
+double TableauEntry(Amatrix X, Bmatrix T,
 				rowrange r, colrange s)
 /* Compute the (r,s) entry of X.T   */
 {
@@ -528,13 +535,12 @@ double TableauEntry(double (*X)[NMAX], double (*T)[NMAX],
   return temp;
 }
 
-void WriteTableau(FILE *f,double (*X)[NMAX], double (*T)[NMAX],
+void WriteTableau(FILE *f, Amatrix X, Bmatrix T,
   InequalityType ineq)
 /* Write the tableau  X.T   */
 {
   colrange j;
   rowrange i;
-  double temp;
   
   fprintf(f, "begin\n");
   if (ineq==ZeroRHS)
@@ -545,14 +551,14 @@ void WriteTableau(FILE *f,double (*X)[NMAX], double (*T)[NMAX],
     if (ineq==ZeroRHS)
       WriteReal(f, 0);  /* if RHS==0, the column is not explicitely stored */
     for (j=1; j<= nn; j++) {
-      fprintf(f," %lf",TableauEntry(X,T,i,j));
+      fprintf(f," %5.2f",TableauEntry(X,T,i,j));
     }
     fprintf(f,"\n");
   }
   fprintf(f,"end\n");
 }
 
-void SelectPivot2(double (*X)[NMAX], double (*T)[NMAX],
+void SelectPivot2(Amatrix X, Bmatrix T,
             HyperplaneOrderType roworder,
             rowrange rowmax, long *NopivotRow,
             long *NopivotCol, rowrange *r, colrange *s,
@@ -564,7 +570,6 @@ void SelectPivot2(double (*X)[NMAX], double (*T)[NMAX],
 {
   boolean stop;
   rowrange i,rtemp;
-  colrange stemp;
   rowset rowexcluded;
   double Xtemp;
 
@@ -614,7 +619,7 @@ void SelectPivot2(double (*X)[NMAX], double (*T)[NMAX],
   set_free(rowexcluded);
 }
 
-void GausianColumnPivot1(double (*X)[NMAX], rowrange r, colrange s,
+void GausianColumnPivot1(Amatrix X, rowrange r, colrange s,
 				rowrange rowmax)
 /* Make a column pivot operation in Amatrix X on position (r,s)  */
 {
@@ -640,14 +645,14 @@ void GausianColumnPivot1(double (*X)[NMAX], rowrange r, colrange s,
 }
 
 
-void GausianColumnPivot2(double (*X)[NMAX], double (*T)[NMAX],
+void GausianColumnPivot2(Amatrix X, Bmatrix T,
 				rowrange r, colrange s)
 /* Update the Transformation matrix T with the pivot operation on (r,s) 
    This procedure performs a implicit pivot operation on the matrix X by
    updating the dual basis inverse  T.
  */
 {
-  long i, j, j1;
+  long j, j1;
   Arow Rtemp;
   double Xtemp0, Xtemp;
 
@@ -665,7 +670,26 @@ void GausianColumnPivot2(double (*X)[NMAX], double (*T)[NMAX],
 }
 
 
-void InitializeBmatrix(double (*T)[NMAX])
+void InitializeBmatrix(Bmatrix T)
+{
+  colrange j;
+  double x;
+
+  for (j = 0; j < nn; j++) {
+    T[j]=(double *)calloc(nn, sizeof x);
+  }
+}
+
+void free_Bmatrix(Bmatrix T)
+{
+  colrange j;
+
+  for (j = 0; j < nn; j++) {
+    free(T[j]);
+  }
+}
+
+void SetToIdentity(Bmatrix T)
 {
   colrange j1, j2;
 
@@ -681,14 +705,18 @@ void InitializeBmatrix(double (*T)[NMAX])
 
 void ReduceAA(long *ChosenRow, long *ChosenCol)
 /* Set the matrix AA to be the submatrix of AA with chosen 
-   rows & columns, and change mm and nn acordingly 
+   rows & columns, and change mm and nn accordingly 
 */
 {
   long i,j,inew,jnew,mnew=0,nnew=0;
   Amatrix Acopy;
+  double x;
 
   mnew=set_card(ChosenRow);
   nnew=set_card(ChosenCol);
+  for (i=0; i<mnew; i++){
+    Acopy[i]=(double *)calloc(nnew,sizeof x);
+  }
   inew=0;
   for (i=1; i <= mm; i++) {
     if (set_member(i,ChosenRow)) {
@@ -720,24 +748,29 @@ void ReduceAA(long *ChosenRow, long *ChosenCol)
     fprintf(stdout, "new row indices:");set_write(ChosenRow);
     fprintf(stdout, "new col indices:");set_write(ChosenCol);
   }
-  mm=mnew;  nn=nnew;
-  for (i=1;i<=mm;i++){
-    for (j=1;j<=nn;j++){
-      AA[i-1][j-1]=Acopy[i-1][j-1];
-    }
+  for (i=0;i<mm;i++){
+    free(AA[i]);
   }
+  for (i=0;i<mnew;i++){
+    AA[i]=Acopy[i];
+  }
+  mm=mnew;  nn=nnew;
 }
 
-void DualizeAA(double (*T)[NMAX])
+void DualizeAA(Bmatrix T)
 /* Set the matrix AA to be the transpose of the matrix [-AA.T | I],
    and change mm and nn acordingly 
 */
 {
   long i,j,mnew,nnew;
   Amatrix Acopy;
+  double x;
 
   mnew=nn+mm;
   nnew=mm;
+  for (i=0; i<mm; i++){
+    Acopy[i]=(double *)calloc(nn,sizeof x);
+  }
   if (mnew > MMAX) {
     printf("MMAX  is too small for ray computation. MMAX must be >= %ld.\n",mnew);
     Error = DimensionTooLarge;
@@ -753,10 +786,16 @@ void DualizeAA(double (*T)[NMAX])
       Acopy[i-1][j-1]=TableauEntry(AA,T,i,j);
     }
   }
+  for (i=0;i<mm;i++){
+    free(AA[i]);
+  }
+  for (i=0; i<mnew; i++){
+    AA[i]=(double *)calloc(nnew,sizeof x);
+  }
   for (i=1;i<=nn;i++){
     for (j=1;j<=mm;j++){
       AA[i-1][j-1]=-Acopy[j-1][i-1];
-     }
+    }
   }
   for (i=1;i<=mm;i++){
     for (j=1;j<=mm;j++){
@@ -764,8 +803,49 @@ void DualizeAA(double (*T)[NMAX])
       else AA[nn+i-1][j-1]=0;
     }
   }
+  for (i=0; i<mm; i++){
+    free(Acopy[i]);
+  }
   mm=mnew;  nn=nnew;
   _L99:;
+}
+
+void EnlargeAAforInteriorFinding(void)
+/* Add an extra column with all minus ones to the matrix AA, 
+   add an objective row with (0,...,0,1), and 
+   rows & columns, and change mm and nn accordingly 
+*/
+{
+  long i,j,mnew=0,nnew=0;
+  Amatrix Acopy;
+  double x;
+
+  mnew=mm+1;
+  nnew=nn+1;
+  for (i=0; i<mnew; i++){
+    Acopy[i]=(double *)calloc(nnew,sizeof x);
+  }
+  for (i=1; i <= mm; i++) {
+    for (j=1; j <= nn; j++) {
+      Acopy[i-1][j-1]=AA[i-1][j-1];
+      if (debug) WriteReal(stdout, AA[i-1][j-1]);
+    }
+    if (debug) fprintf(stdout,"\n");
+  }
+  for (i=1;i<=mm;i++) {
+    Acopy[i-1][nn]=-1.0;  /* new column with all minus one's */
+  }
+  for (j=1;j<=nn;j++) {
+    Acopy[mm][j-1]=0.0;  /* new row with (0,...,0,1) */
+  }
+  Acopy[mm][nn]=1.0;  /* new row with (0,...,0,1) */
+  for (i=0;i<mm;i++){
+    free(AA[i]);
+  }
+  for (i=0;i<mnew;i++){
+    AA[i]=Acopy[i];
+  }
+  mm=mnew;  nn=nnew;
 }
 
 
@@ -802,7 +882,7 @@ void WriteSubMatrixOfAA(FILE *f,long *ChosenRow, long *ChosenCol,
   fprintf(f,"end\n"); 
 }
 
-void WriteAmatrix(FILE *f, double (*A)[NMAX], long rowmax, long colmax,
+void WriteAmatrix(FILE *f, Amatrix A, long rowmax, long colmax,
       InequalityType ineq)
 {
   long i,j;
@@ -823,7 +903,7 @@ void WriteAmatrix(FILE *f, double (*A)[NMAX], long rowmax, long colmax,
   fprintf(f, "end\n");
 }
 
-void WriteBmatrix(FILE *f, double (*T)[NMAX])
+void WriteBmatrix(FILE *f, Bmatrix T)
 {
   colrange j1, j2;
 
@@ -836,13 +916,13 @@ void WriteBmatrix(FILE *f, double (*T)[NMAX])
   putc('\n', f);
 }
 
-void ComputeRank(double (*A1)[NMAX], long *TargetRows, long *rank)
+void ComputeRank(Amatrix A1, long *TargetRows, long *rank)
 /* Compute the rank of the submatrix of a Amatrix A1 indexed by TargetRows.
    This procedure does not change the matrix A1.
  */
 {
   boolean stop, chosen;
-  rowrange i,r;
+  rowrange r;
   colrange s;
   rowset NoPivotRow;
   colset ColSelected;
@@ -854,6 +934,7 @@ void ComputeRank(double (*A1)[NMAX], long *TargetRows, long *rank)
   set_compl(NoPivotRow,TargetRows);
   set_initialize(&ColSelected, nn);
   InitializeBmatrix(Btemp);
+  SetToIdentity(Btemp);
   if (debug) WriteBmatrix(stdout,Btemp);
   do {   /* Find a set of rows for a basis */
       SelectPivot2(A1, Btemp, LeastIndex, mm, NoPivotRow, ColSelected, &r, &s, &chosen);
@@ -873,10 +954,11 @@ void ComputeRank(double (*A1)[NMAX], long *TargetRows, long *rank)
   } while (!stop);
   set_free(NoPivotRow);
   set_free(ColSelected);
+  free_Bmatrix(Btemp);
 }
 
-void ComputeBInverse(double (*A1)[NMAX], long lastrow,
-       double (*InvA1)[NMAX], long *rank)
+void ComputeBInverse(Amatrix A1, long lastrow,
+       Bmatrix InvA1, long *rank)
 {
   boolean stop, chosen;
   rowrange r;
@@ -886,7 +968,7 @@ void ComputeBInverse(double (*A1)[NMAX], long lastrow,
 
   *rank = 0;
   stop = FALSE;
-  InitializeBmatrix(InvA1);
+  SetToIdentity(InvA1);
   set_initialize(&RowSelected, mm);
   set_initialize(&ColSelected, nn);
   do {
@@ -894,7 +976,7 @@ void ComputeBInverse(double (*A1)[NMAX], long lastrow,
     if (chosen) {
       (*rank)++;
       if (debug)
-        printf("%3ldth pivot on%3d, %3d\n", *rank, r, s);
+        printf("%3ldth pivot on%3ld, %3ld\n", *rank, r, s);
       GausianColumnPivot2(A1, InvA1, r, s);
       set_addelem(RowSelected, r);
       set_addelem(ColSelected, s);
@@ -906,14 +988,13 @@ void ComputeBInverse(double (*A1)[NMAX], long lastrow,
 }
 
 
-void FindBasis(double (*A1)[NMAX], 
+void FindBasis(Amatrix A1, 
               HyperplaneOrderType roword, 
               rowset RowSelected,colset ColInd,
-              double (*BasisInverse)[NMAX], long *rank)
+              Bmatrix BasisInverse, long *rank)
 {
   boolean stop, chosen;
   colset ColSelected;
-  long rowsize;
   rowrange r;
   colrange j,s;
 
@@ -922,7 +1003,7 @@ void FindBasis(double (*A1)[NMAX],
   for (j=0;j<=nn;j++) ColInd[j]=0;
   set_emptyset(RowSelected);
   set_initialize(&ColSelected, nn);
-  InitializeBmatrix(BasisInverse);
+  SetToIdentity(BasisInverse);
   if (debug) WriteBmatrix(stdout,BasisInverse);
   do {   /* Find a set of rows for a basis */
       SelectPivot2(A1, BasisInverse, roword, mm, RowSelected, ColSelected, &r, &s, &chosen);
@@ -947,7 +1028,7 @@ void FindBasis(double (*A1)[NMAX],
 }
 
 
-void SelectCrissCrossPivot(double (*X)[NMAX], double (*T)[NMAX],
+void SelectCrissCrossPivot(Amatrix X, Bmatrix T,
             long bflag[], rowrange objrow, colrange rhscol,
             rowrange *r, colrange *s,
 			boolean *selected, LPStatusType *lps)
@@ -1016,21 +1097,27 @@ void SelectCrissCrossPivot(double (*X)[NMAX], double (*T)[NMAX],
   }
 }
 
-void CrissCrossSolve(double (*A1)[NMAX],double (*BasisInverse)[NMAX], 
-   rowrange OBJrow, colrange RHScol, double *sol)
+void CrissCrossSolve(Amatrix A1,Bmatrix BasisInverse, 
+   rowrange OBJrow, colrange RHScol, LPStatusType *LPS,
+   double *optvalue, Arow sol, Arow dsol, colindex NBIndex,
+   rowrange *re, colrange *se, long *iter)
+/* 
+When LP is inconsistent then *re returns the evidence row.
+When LP is dual-inconsistent then *se returns the evidence column.
+*/
 {
   boolean stop, chosen;
-  long rowsize,rank;
+  long rank,k;
   rowrange i,r,entering,leaving;
   colrange j,s;
   colset ColSelected;
   rowset RowSelected,Basis,Cobasis;
   rowindex BasisFlag;
-  colindex NBIndex;   /* NBIndex[s] stores the nonbasic variable in column s */ 
-  LPStatusType LPStatus;
 
+  *re=0; *se=0; *iter=0;
   rank = 0;
   stop = FALSE;
+  InitializeBmatrix(InitialRays);
   set_initialize(&Cobasis,mm);
   set_initialize(&Basis,mm);
   set_initialize(&RowSelected, mm);
@@ -1044,7 +1131,7 @@ void CrissCrossSolve(double (*A1)[NMAX],double (*BasisInverse)[NMAX],
     BasisFlag[i]=-1;    /* basic variable has index -1 */
   }
   BasisFlag[OBJrow]= 0;
-  InitializeBmatrix(BasisInverse);
+  SetToIdentity(BasisInverse);
   if (debug) WriteBmatrix(stdout,BasisInverse);
   do {   /* Find a LP basis */
       SelectPivot2(A1, BasisInverse, LeastIndex
@@ -1064,7 +1151,6 @@ void CrissCrossSolve(double (*A1)[NMAX],double (*BasisInverse)[NMAX],
         BasisFlag[r]=s;   /* the nonbasic variable r corresponds to column s */
         NBIndex[s]=r;     /* the nonbasic variable on s column is r */
         if (debug) fprintf(stdout,"nonbasic variable %ld has index %ld\n", r, BasisFlag[r]);
-        
         rank++;
         GausianColumnPivot2(A1,BasisInverse, r, s);
         if (debug) {
@@ -1080,7 +1166,7 @@ void CrissCrossSolve(double (*A1)[NMAX],double (*BasisInverse)[NMAX],
   stop=FALSE;
   do {   /* Criss-Cross Method */
     SelectCrissCrossPivot(A1, BasisInverse, BasisFlag,
-       OBJrow, RHScol, &r, &s, &chosen, &LPStatus);
+       OBJrow, RHScol, &r, &s, &chosen, LPS);
     if (debug && chosen) fprintf(stdout, "Procedure Criss-Cross: pivot on (r,s) =(%ld, %ld).\n", r, s);
     if (chosen) {
       entering=NBIndex[s];
@@ -1097,44 +1183,45 @@ void CrissCrossSolve(double (*A1)[NMAX],double (*BasisInverse)[NMAX],
         fprintf(stdout, "basis = "); set_write(Basis);
         fprintf(stdout, "new nonbasic variable %ld has index %ld\n", leaving, BasisFlag[leaving]);
       }
-      rank++;
       GausianColumnPivot2(A1,BasisInverse, r, s);
+      (*iter)++;
       if (debug) {
         WriteBmatrix(stdout,BasisInverse);
         WriteTableau(stdout,A1,BasisInverse,Inequality),
 	    fprintf(stdout, "%3ldth row added to the initial set (%ldth elem)\n",  r, rank);
 	  }
     } else {
+      switch (*LPS){
+        case Inconsistent: *re=r;
+        case DualInconsistent: *se=s;
+      }
       stop=TRUE;
     }
-  } while (!stop);
-  switch (LPStatus){
+  } while(!stop);
+  switch (*LPS){
   case Optimal:
     for (j=1;j<=nn; j++) {
       sol[j-1]=BasisInverse[j-1][RHScol-1];
-    }
-    if (DynamicWriteOn) {
-      fprintf(stdout,"CrissCrossSolve: an optimal solution found.\n");
-      fprintf(writing,"CrissCrossSolve: an optimal solution found.\n");
-      for (j=1; j<nn; j++) {
-        fprintf(stdout,"x[%ld] = %lg\n", j,sol[j]);
-        fprintf(writing,"x[%ld] = %lg\n", j,sol[j]);
-      }
-      fprintf(stdout,"objective value = %lg\n", TableauEntry(A1,BasisInverse,OBJrow,RHScol));
-      fprintf(writing,"objective value = %lg\n", TableauEntry(A1,BasisInverse,OBJrow,RHScol));
+      dsol[j-1]=-TableauEntry(A1,BasisInverse,OBJrow,j);
+      *optvalue=TableauEntry(A1,BasisInverse,OBJrow,RHScol);
+      if (debug) printf("dsol %ld  %5.2f \n",NBIndex[j],dsol[j-1]);
     }
     break;
   case Inconsistent:
-    if (DynamicWriteOn) {
-      fprintf(stdout,"CrissCrossSolve: LP is inconsistent.\n");
-      fprintf(writing,"CrissCrossSolve: LP is inconsistent.\n");
+    if (debug) printf("CrissCrossSolve: LP is inconsistent.\n");
+    for (j=1;j<=nn; j++) {
+      sol[j-1]=BasisInverse[j-1][RHScol-1];
+      dsol[j-1]=-TableauEntry(A1,BasisInverse,*re,j);
+      if (debug) printf("dsol %ld  %5.2f \n",NBIndex[j],dsol[j-1]);
     }
     break;
   case DualInconsistent:
-    if (DynamicWriteOn) {
-      fprintf(stdout,"CrissCrossSolve: LP is dual inconsistent.\n");
-      fprintf(writing,"CrissCrossSolve: LP is dual inconsistent.\n");
+    for (j=1;j<=nn; j++) {
+      sol[j-1]=BasisInverse[j-1][*se-1];
+      dsol[j-1]=-TableauEntry(A1,BasisInverse,OBJrow,j);
+      if (debug) printf("dsol %ld  %5.2f \n",NBIndex[j],dsol[j-1]);
     }
+    if (debug) printf("CrissCrossSolve: LP is dual inconsistent.\n");
     break;
   }
   set_free(ColSelected);
@@ -1143,14 +1230,77 @@ void CrissCrossSolve(double (*A1)[NMAX],double (*BasisInverse)[NMAX],
   set_free(Cobasis);
 }
 
+void WriteLPResult(FILE *f, LPStatusType LPS, double optval,
+   Arow sol, Arow dsol, colindex NBIndex, rowrange re, colrange se,
+   long iter)
+{
+  long j;
+
+  fprintf(f,"*cdd LP Solver (Criss-Cross Method) Result\n");  
+  fprintf(f,"*cdd input file : %s   (%4ld  x %4ld)\n",
+	  inputfile, minput, ninput);
+  switch (LPS){
+  case Optimal:
+    fprintf(f,"LP status: a dual pair (x, y) of optimal solutions found.\n");
+    fprintf(f,"begin\n");
+    fprintf(f,"  primal_solution\n");
+    for (j=1; j<nn; j++) {
+      fprintf(f,"  %3ld : ",j);
+      WriteReal(f,sol[j]);
+      fprintf(f,"\n");
+    }
+    fprintf(f,"  dual_solution\n");
+    for (j=1; j<nn; j++){
+      fprintf(f,"  %3ld : ",NBIndex[j+1]);
+      WriteReal(f,dsol[j]);
+      fprintf(f,"\n");
+    }
+    fprintf(f,"  optimal_value : % .9E\n", optval);
+    fprintf(f,"end\n");
+    break;
+
+  case Inconsistent:
+    fprintf(f,"*LP status: LP is inconsistent.\n");
+    fprintf(f,"*The positive combination of original inequalities with\n");
+    fprintf(f,"*the following coefficients will prove the inconsistency.\n");
+    fprintf(f,"begin\n");
+    fprintf(f,"  dual_direction\n");
+    fprintf(f,"  %3ld : \n",re);
+    WriteReal(f,1.0);
+    for (j=1; j<nn; j++){
+      fprintf(f,"  %3ld : ",NBIndex[j+1]);
+      WriteReal(f,dsol[j]);
+      fprintf(f,"\n");
+    }
+    fprintf(f,"end\n");
+    break;
+
+  case DualInconsistent:
+    fprintf(f,"*LP status: LP is dual inconsistent.\n");
+    fprintf(f,"*The linear combination of columns with\n");
+    fprintf(f,"*the following coefficients will prove the dual inconsistency.\n");
+    fprintf(f,"*(It is also an unbounded direction for the primal LP.)\n");
+    fprintf(f,"begin\n");
+    fprintf(f,"  primal_direction\n");
+    for (j=1; j<nn; j++) {
+      fprintf(f,"  %3ld : ",j);
+      WriteReal(f,sol[j]);
+      fprintf(f,"\n");
+    }
+    fprintf(f,"end\n");
+    break;
+  }
+  fprintf(f,"* number of pivot operations = %ld\n", iter);
+}
+
 
 void FindInitialRays(rowset InitHyperplanes,
-			    double (*InitRays)[NMAX], boolean *found)
+			    Bmatrix InitRays, boolean *found)
 {
   Bmatrix BInverse;
   rowset CandidateRows;
   colindex PivRow;
-  long i, lastrow, rank;
+  long i, rank;
   HyperplaneOrderType roworder;
 
   *found = FALSE;
@@ -1190,6 +1340,7 @@ void FindInitialRays(rowset InitHyperplanes,
     set_addelem(CandidateRows, i);      /*all rows are candidates for initial cone*/
   if (DynamicWriteOn)
     printf("*Computing an initial set of rays\n");
+  InitializeBmatrix(BInverse);
   FindBasis(AA, roworder, InitHyperplanes, PivRow, BInverse, &rank);
   if (debug) {
     printf("FindInitialBasis: InitHyperplanes=");
@@ -1208,6 +1359,7 @@ void FindInitialRays(rowset InitHyperplanes,
   if (debug) {
     WriteBmatrix(stdout, BInverse);
   }
+  /* free_Bmatrix(InitRays);  */
   CopyBmatrix(BInverse,InitRays);
   if (debug) WriteBmatrix(stdout, InitRays);
   set_free(CandidateRows);

@@ -1,6 +1,7 @@
 % The name of this file: cddman.tex
 % written by by Komei Fukuda
 % December 14, 1993
+% Revised Feb. 2, 1994
 %
 \documentstyle[11pt]{article}
 \renewcommand{\baselinestretch}{1.0}
@@ -37,7 +38,7 @@
 }
 
 \vspace{20mm}
-{\Large (cdd Version 0.36,  January 24, 1994)}
+{\Large (cdd Version 0.38,  January 31, 1994)}
 
 \end{center}
 
@@ -56,7 +57,7 @@
    University of Tsukuba, Tokyo, Japan}
 
 \bigskip
-{\large (cdd Version 0.36,  January 24, 1993)}
+{\large (cdd Version 0.38,  January 31, 1994)}
 
 \end{center}
 
@@ -144,7 +145,7 @@ a new version of cdd, which will hopefully perform the exact
 computation for integer and rational inputs.
 
 This program can be distributed freely under the GNU GENERAL PUBLIC LICENSE.
-Please read the file COPYING carefully befor using.
+Please read the file COPYING carefully before using.
 
 I will not take any responsibility of any problems you might have
 with this program.  But I will be glad to receive bug reports or suggestions
@@ -231,15 +232,15 @@ After you run cdd with this input file, you will get
 an output file, say ucube.ext, which looks like:
 
 \begin{verbatim}
-* cdd: Double Description Method C-Code:Version C0.36 (January 23, 1994)
+* cdd: Double Description Method C-Code:Version C0.38 (January 31, 1994)
 * Copyright (C) 1994, Komei Fukuda, fukuda@dma.epfl.ch
-*Input File:ine/ucube.ine   (   5  x    4)
+*Input File:ucube.ine   (   5  x    4)
 *HyperplaneOrder: LexMin
 *AdjacencyTest: Combinatorial
 *Degeneracy preknowledge for computation: None (possible degeneracy)
 *Vertex/Ray enumeration is chosen.
-*Computation starts     at Mon Jan 24 12:20:28 1994
-*            terminates at Mon Jan 24 12:20:28 1994
+*Computation starts     at Wed Feb  2 09:05:01 1994
+*            terminates at Wed Feb  2 09:05:01 1994
 *Total processor time = 0 seconds
 *                     = 0 hour 0 min 0 sec
 *FINAL RESULT:
@@ -331,8 +332,8 @@ the previous section, the program outputs the following ucube.icd file:
 *Incidences of output(=vertices/rays) and input (=hyperplanes)
 *   for each output, #incidence and the set of hyperplanes containing it
 *   or its complement with its cardinality with minus sign
-*cdd input file : ine/ucube.ine   (   5  x    4)
-*cdd output file: ext/ucube.ext
+*cdd input file : ucube.ine   (   5  x    4)
+*cdd output file: ucube.ext
 begin
        5    5    6
       -1    5
@@ -463,12 +464,48 @@ ordering will be chosen.
 When this option is set with an objective vector 
 $c_0\: c_1 \: c_2 \ldots c_d$, the program
 simply solves the linear program: $\max c_0 + c_1 x_1 + c_2 x_2 +\cdots + c_d x_d$
-over the input polyhedron $P$.
-See the sample input file ^^ ^^ lptest.ine".
+over the input polyhedron $P$. The grammer is simply
+
+\begin{tabular}{ccl}
+\\ \hline
+\multicolumn{3}{l} {various comments}\\
+\multicolumn{3}{l} {\bf begin}\\
+ $m$ & $d+1$ & {\bf numbertype}\\
+ $b$ & $-A$ \\
+\multicolumn{3}{l} {\bf end}\\
+\multicolumn{3}{l} {maximize} \\ 
+\multicolumn{3}{l} { $c_0 \quad c_1 \quad c_2 \quad \cdots \quad c_d$ } \\ \hline
+\\
+\end{tabular}
+
+See the sample input file ^^ ^^ lptest.ine".  The program cdd
+will output both primal and dual optimal solutions  if the LP
+is solvable.  If the LP is infeasible (dual infeasible), then
+it will output an evidence.  Currently the maximization
+is not supported for homogeneous input (i.e. zero righthand side case).
 
 \item[partial\_enumeration] option\\
 With this option, one can enumerate only those
-vertices and rays that are lying on a selected set of inequalities.
+vertices and rays that are lying on the set of hyperplanes
+associated with specified inequality numbers. If you want
+to compute all vertices/rays lying on hyperplanes
+associated with $k$ inequalities $i_1, i_2, \ldots, i_k$
+($1 \le i_j \le m$), then
+the option should be specified as
+
+\begin{tabular}{ccl}
+\\ \hline
+\multicolumn{3}{l} {various comments}\\
+\multicolumn{3}{l} {\bf begin}\\
+ $m$ & $d+1$ & {\bf numbertype}\\
+ $b$ & $-A$ \\
+\multicolumn{3}{l} {\bf end}\\
+\multicolumn{3}{l} {partial\_enumeration} \\ 
+\multicolumn{3}{l} { $k \quad i_1 \quad i_2 \quad \cdots \quad i_k$ } \\ \hline
+\\
+\end{tabular}
+
+
 See the input file ^^ ^^ partialtest.ine".
 
 \item[preprojection] option\\
@@ -479,7 +516,7 @@ and the variable indices for $x2$, say $1, 4, 6, 7$,
 are listed in the input file as
 \begin{verbatim}
 begin
-  m   d+1   Type
+  m   d+1   numbertype
   b   -A1  -A2
 end
 preprojection
@@ -497,10 +534,31 @@ written by F. Margot, EPFL, which generates quickly a minimal
 We are now preparing to distribute this program with cdd.
 \end{description}
 
+\section{How to Use}  \label{HOWTO}
+
+The program hardly has any user interface.  Once you have a compiled
+executable file, say {\em cdd\/} (see Section~\ref{CAUTIONS}), 
+and once you create an input file,
+say, {\em test.ine\/}, you have basically two ways to run the program.
+The simplest way is just to run the program with 
+\begin{verbatim}
+  % cdd test.ine
+\end{verbatim}
+and then the program will open necessary output files with
+default file names, and output the requested results.
+The default names are {\em test.ext\/}, {\em test.icd\/}, {\em test.adj\/},
+{\em testsub.ine\/} for the extremal points/ray file, the incidence
+file, the adjacency file and the preprojection variable sub-inequality
+system, respectively.  If you want to specify the output file names
+different from default, simply run the program by
+\begin{verbatim}
+  % cdd
+\end{verbatim}
+and input desired file names at each of file name requests.
+
 \section{Source Files and Compilation}  \label{CAUTIONS}
 
 \begin{itemize}
-
 \item[(1)] [Files and Compilation] The source files for distribution are
 
 \begin{tabular}{ll}
@@ -533,34 +591,30 @@ Also, the files cdd.c, cdd.h, cdddef.h, cddarith.c, setoper.c and setoper.h are 
 in the current directory.
 
 \item[(2)] [Recompilation] The first two constants in the program cdddef.h are to be 
-changed by the user, and the program must be recompiled
-each time any change is made.   These constants are simply
+changed by the user if necessary, and the program must be recompiled
+each time after any change is made.   These constants are simply
 to specify the largest size of acceptable input data $(b, -A)$: 
 \begin{verbatim}
-#define MMAX    102  /* USER'S CHOICE: max row size of A plus one */
-#define NMAX    82   /* USER'S CHOICE: max column size of A plus one */
+#define MMAX    3001  /* USER'S CHOICE: max row size of A plus one */
+#define NMAX    101   /* USER'S CHOICE: max column size of A plus one */
 \end{verbatim}
 If this input data has $m$ rows and $d+1$ columns, then in the program,
 MMAX should be at least $m+1$ and NMAX should be at least
-$d+1$.  Although it is recommended to set the sizes MMAX and NMAX moderately, 
-MMAX=600 and NMAX=100 should not be any problem if you use a workstation with 16 mbyte memory.
-These sizes are only for storing the input data, and 
-any temporary vertices and rays are stored with
-arrays of smallest possible size, independent of MMAX or NMAX.  
-Also, the set operation is performed frequently
-by the program cdd on sets with this minimum size, and thus smaller MMAX nor NMAX
-do not accelerate the execution of cdd.
+$d+1$.  Although it has no sense to set the sizes MMAX and NMAX much larger
+than necessary, the program only creates spaces for MMAX+NMAX pointers
+and uses only necessary storage space for each input, and
+thus large MMAX and NMAX won't be too harmful.
 
 Unlike the pascal version pdd, one can set the size MMAX as large as one
 wants.  It is no more restricted by the SET TYPE element sizes of 
 usual Pascal compilers.
 
 \item[(3)] [TURBO/THINK C Users] The program cdd.c is written in
-ANSI C, and hence it should run on
-personal computers without any changes if one uses a compliler supportin
-ANSI standard. We have verified that it can be compiled by THINK Pascal without
+ANSI C, and thus it should run on
+personal computers without any changes if one uses a compliler supporting
+ANSI standard. We have verified that it can be compiled by THINK C without
 any problems if ANSI library is added to the project together with
-cdd.c and setoper.c.  We have not yet tried to compile it with TURBO C.
+cdd.c, cddarith.c and setoper.c.  We have not yet tried to compile it with TURBO C.
 
 \item[(4)] [Rational Input Not Supported] The present cdd.c does not
 read any RATIONAL numbers ($a/b$ type with $a$, $b$ integers).
@@ -597,19 +651,20 @@ his precious advise on the input and output style of Polyhedra format.
 \bibitem[AF92]{AF} Avis, D.  and Fukuda, K., ^^ ^^ A pivoting algorithm
         for convex hulls and vertex enumeration of arrangements
         and polyhedra," {\em Discrete Comput Geometry} 8
-        (1992), 295-313.
+        (1992), pp. 295-313.
 
 \bibitem[CGAF93]{CGAF} Ceder, G., Garbulski, G.D.,  Avis, D. and Fukuda, K., 
 ^^ ^^ Ground states of a ternary lattice model with nearest
-and next-nearest neighbor interactions," preprint  (1993),
-Physical Review B, to appear.
+and next-nearest neighbor interactions,"
+{\em Physical Review B\/}, Vol.49, No. 1, (1994)  pp. 1-7.
 
 \bibitem[G90]{G} Grishukhin, V.P., ^^ ^^ All facets of
 the cut cone for n=7 are known," European Journal of
 Combinatorics 11 (1990), 115-117.
 
-\bibitem[MRTT53]{MRTT} Motzkin, T.S. , Raiffa, H.,  Thompson, G.L. and  Thrall, R.M., ``The double
-description method," in  ``Contribution to the Theory of Games, Vol. II"
+\bibitem[MRTT53]{MRTT} Motzkin, T.S. , Raiffa, H.,  
+Thompson, G.L. and  Thrall, R.M., ``The double description method," 
+in  ^^ ^^ Contribution to the Theory of Games, Vol. II"
 (H.W. Kuhn and A.W. Tucker, eds.),
 Annals of Math. Studies 28,  Princeton University Press, 1953, pp.81-103.
 

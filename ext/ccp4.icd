@@ -1,7 +1,8 @@
-*Input File:ccp4.ine   (   8  x    7)
 *Incidences of output(=facets) and input (=points)
 *   for each output, #incidence and the set of points lying on it
 *   or its complement with its cardinality with minus sign
+*cdd input file : ccp4.ine   (   8  x    7)
+*cdd output file: ccp4.ext
 begin
       16    8    8
       -2    1    2

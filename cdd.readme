@@ -1,4 +1,4 @@
-1994-01-24
+1994-02-02
 This directory contains the distribution files of the software cdd:
 
      cdd.readme     This file itself
@@ -17,12 +17,19 @@ This directory contains the distribution files of the software cdd:
      COPYING        GNU GENERAL PUBLIC LICENSE
 
 Before using the software, please read COPYING and
-print out the manual.  
+compile and print out the manual.  
 
-For compilation on unix environment, simply use the following:
-     % gcc cdd.c cddarith.c setoper.c 
-or use some optimization option like
-     % gcc -O cdd.c cddarith.c setoper.c 
+To compile the manual cddman.tex in standard unix environment, run
+the following command twice (% is a unix prompt): 
+   % latex cddmax.tex
+to get the dvi file, cddman.dvi.  On printing or viewing commands
+for cddman.dvi file, please ask a local system administrator.
+
+For compilation of cdd, simply use the following:
+   % gcc cdd.c cddarith.c setoper.c 
+to get an executable file a.out. For a faster code, compile with 
+some optimization option like
+   % gcc -O cdd.c cddarith.c setoper.c 
 where gcc can be replaced by cc.
 
 For more information, contact

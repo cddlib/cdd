@@ -1,6 +1,18 @@
-CrissCrossSolve: an optimal solution found.
-x[1] = 1
-x[2] = 2.23607
-x[3] = 1
-x[4] = 1
-objective value = 5.23607
+*Linear optimization is chosen.
+*cdd LP Solver (Criss-Cross Method) Result
+*cdd input file : lptest.ine   ( 120  x    5)
+LP status: a dual pair (x, y) of optimal solutions found.
+begin
+  primal_solution
+    1 :   1
+    2 :   2.236067964E+00
+    3 :   1
+    4 :   1
+  dual_solution
+  100 :   0
+  107 :   0
+  105 :   1
+   74 :   0
+  optimal_value :  5.236067996E+00
+end
+* number of pivot operations = 224

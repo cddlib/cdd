@@ -1,8 +1,8 @@
 *Incidences of output(=facets) and input (=points)
 *   for each output, #incidence and the set of points lying on it
 *   or its complement with its cardinality with minus sign
-*cdd input file : ine/ccc5.ine   (  15  x   11)
-*cdd output file: ext/ccc5.ext
+*cdd input file : ccc5.ine   (  15  x   11)
+*cdd output file: ccc5.ext
 begin
       40   15   15
       -4    1    4    5   11

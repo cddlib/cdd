@@ -1,7 +1,8 @@
-*Input File:ccp6.ine   (  32  x   16)
 *Incidences of output(=facets) and input (=points)
 *   for each output, #incidence and the set of points lying on it
 *   or its complement with its cardinality with minus sign
+*cdd input file : ccp6.ine   (  32  x   16)
+*cdd output file: ccp6.ext
 begin
      368   32   32
       15   18   19   20   21   22   23   24   25   26   27   28   29   30   31   32

@@ -1,5 +1,5 @@
 #define COPYRIGHT   "Copyright (C) 1994, Komei Fukuda, fukuda@dma.epfl.ch"
-#define DDVERSION   "Version C0.36 (January 23, 1994)"
+#define DDVERSION   "Version C0.38 (January 31, 1994)"
 
 /*  This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -28,7 +28,7 @@
    from the Pascal program pdd.p written by Komei Fukuda. 
 */
 
-#include "setoper.h"     /* set operation library header (Dec.8,1993 version or later) */
+#include "setoper.h" /* set operation library header (Jan. 23,1994 version or later) */
 #include "cdddef.h"
 #include "cdd.h"
 #include <stdio.h>
@@ -36,12 +36,12 @@
 #include <time.h>
 #include <math.h>
 #include <string.h>
+/* #include <profile.h>   THINK C PROFILER */
+/* #include <console.h>   THINK C PROFILER */
 
 long minput, ninput;   /*size of input data [b -A] */
 long mm, nn;   /*size of the homogenous system to be solved by dd*/
 long projdim;  /*dimension of orthogonal preprojection */
-colrange RHScol;
-rowrange OBJrow;
 colset projvars;   /*set of variables spanning the space of preprojection, 
      i.e. the remaining variables are to be removed*/
 rowset MarkedSet, GroundSet, Face, Face1;
@@ -51,6 +51,9 @@ long RayCount, FeasibleRayCount, TotalRayCount, VertexCount;
 boolean DynamicWriteOn, DynamicRayWriteOn, LogWriteOn, debug;
 Amatrix AA;
 Bmatrix InitialRays;
+colrange RHScol;   /* LP RHS column */
+rowrange OBJrow;   /* LP OBJ row */
+LPStatusType LPStatus;
 Arow LPcost;  /* LP cost vector to be maximized  */
 RayRecord *ArtificialRay, *FirstRay, *LastRay;
 boolean found, inputsuccessful;
@@ -66,7 +69,9 @@ ConversionType Conversion;
 IncidenceOutputType IncidenceOutput;
 AdjacencyOutputType AdjacencyOutput;
 ErrorType Error;
-DataFileType inputfile,outputfile,projfile,icdfile,adjfile,logfile;
+FileInputModeType FileInputMode;
+DataFileType inputfile,ifilehead,ifiletail,
+  outputfile,projfile,icdfile,adjfile,logfile;
 FILE *reading, *writing, *writing_proj, *writing_icd, *writing_adj,*writing_log;
 time_t starttime, endtime;
 
@@ -87,120 +92,109 @@ void DefaultOptionSetup(void)
   InitBasisAtBottom = FALSE;
 }
 
-void SetInputFile(FILE **f)
+void SetInputFile(FILE **f, boolean *success)
 {
-  boolean opened=FALSE;
+  boolean opened=FALSE,stop, quit=FALSE;
+  int i,dotpos=0, semipos=0, ifilelen=0;
+  char ch;
+  char *tempname;
   
-  while (!opened) {
-    printf("\n>> Input file (*.ine) : ");
-    scanf("%s",inputfile);
+  *success=FALSE;
+  while (!opened && !quit) {
+    if (FileInputMode!=Auto){
+      printf("\n>> Input file (*.ine) : ");
+      scanf("%s",inputfile);
+      ch=getchar();
+    }
+    stop=FALSE;
+    for (i=0; i<filenamelen && !stop; i++){
+      ch=inputfile[i];
+      switch (ch) {
+        case '.': 
+          dotpos=i+1;
+          break;
+        case ';':  case ' ':  case '\0':  case '\n':  case '\t':     
+          if (ch==';'){
+            semipos=i+1;
+            FileInputMode=SemiAuto;   
+            /* semicolon at the end of the filename
+            -> output file names will be creeated with defaults. */
+          }
+          stop=TRUE;
+          tempname=(char*)calloc(filenamelen,sizeof ch);
+          strncpy(tempname, inputfile, i);
+          strcpy(inputfile,tempname);
+          break;
+      }
+    }
+    if (dotpos>0){
+      strncpy(ifilehead, inputfile, dotpos-1);
+    }
+    if (debug){
+      printf("inputfile name: %s\n", inputfile);  
+      printf("inputfile name head: %s\n", ifilehead);  
+      printf("semicolon pos: %d\n", semipos);
+    }  
     if ( ( *f = fopen(inputfile, "r") )!= NULL) {
-      printf("input file %s is open\n", inputfile);
+      if (DynamicWriteOn) printf("input file %s is open\n", inputfile);
       opened=TRUE;
+      *success=TRUE;
     }
-    else printf("The file %s not found\n",inputfile);
-  }
-}
-
-void SetWriteFile(FILE **f)
-{
-  boolean opened=FALSE;
-  char ch;
-  long i;
-
-  while (!opened) {
-    printf("\n>> Output file (*.ext)   : ");
-    scanf("%s",outputfile);
-    if (strcmp(inputfile, outputfile)!=0) {
-      *f = fopen(outputfile, "w");
-      printf("write file %s is open\n",outputfile);
-      opened=TRUE;
-    }
-    else {
-      printf("write file %s must have a name different from inputfile.\n",outputfile);
+    else{
+      printf("The file %s not found\n",inputfile);
+      if (FileInputMode==Auto) {
+        quit=TRUE;
+      }
     }
   }
 }
 
-void SetProjFile(FILE **f)
+void SetWriteFile(FILE **f, DataFileType fname, char cflag, char *fscript)
 {
-  boolean opened=FALSE;
-  char ch;
-  long i;
-
-  while (!opened) {
-    printf("\n>> Inequality output file of projection variables (*.ine)   : ");
-    scanf("%s",projfile);
-    if (strcmp(inputfile, projfile)!=0) {
-      *f = fopen(projfile, "w");
-      printf("write file %s is open\n",projfile);
-      opened=TRUE;
-    }
-    else {
-      printf("write file %s must have a name different from inputfile.\n",projfile);
+  boolean quit=FALSE;
+  char *extension;
+  
+  switch (cflag) {
+    case 'o':
+      extension=".ext";break;
+    case 'a':
+      extension=".adj";break;
+    case 'i':
+      extension=".icd";break;
+    case 'l':
+      extension=".ddl";break;
+    case 'p':
+      extension="sub.ine";break;
+    default:
+      extension=".xxx";break;
+  }
+  if (FileInputMode==Manual){
+    while (!quit) {
+      printf("\n>> %s file name (*%s)   : ",fscript, extension);
+      scanf("%s",fname);
+      if (fname[0]==';'|| fname[0]<'0'){
+        quit=TRUE;  /* default file name */
+      } 
+      else if (strcmp(inputfile, fname)!=0){
+        *f = fopen(fname, "w");
+        if (DynamicWriteOn) printf("write file %s is open\n",fname);
+        goto _L99;
+      }
+      else {
+        printf("%s file %s must have a name different from inputfile.\n",fscript,fname);
+      }
     }
   }
-}
-
-
-void SetIncidenceFile(FILE **f)
-{
-  boolean opened=FALSE;
-  char ch;
-  long i;
-
-  while (!opened) {
-    printf("\n>> Incidence file (*.icd): ");
-    scanf("%s",icdfile);
-    if (strcmp(inputfile, icdfile)!=0) {
-      *f = fopen(icdfile, "w");
-      printf("Incidence file %s is open\n",icdfile);
-      opened=TRUE;
-    }
-    else {
-      printf("The name of incidence file %s must be different from inputfile.\n",icdfile);
-    }
+  /* Auto or SemiAuto FileInput */
+  strcpy(fname,ifilehead); 
+  strcat(fname,extension); 
+  if (strcmp(inputfile, fname)==0) {
+    strcpy(fname,inputfile); 
+    strcat(fname,extension); 
   }
-}
-
-void SetAdjacencyFile(FILE **f)
-{
-  boolean opened=FALSE;
-  char ch;
-  long i;
-
-  while (!opened) {
-    printf("\n>> Adjacency file (*.adj): ");
-    scanf("%s",adjfile);
-    if (strcmp(inputfile, adjfile)!=0) {
-      *f = fopen(adjfile, "w");
-      printf("Adjacency file %s is open\n",adjfile);
-      opened=TRUE;
-    }
-    else {
-      printf("The name of adjacency file %s must be different from inputfile.\n",icdfile);
-    }
-  }
-}
-
-void SetLogFile(FILE **f)
-{
-  boolean opened=FALSE;
-  char ch;
-  long i;
-
-  while (!opened) {
-    printf("\n>> Log file (*.ddl)      : ");
-    scanf("%s",logfile);
-    if (strcmp(inputfile, logfile)!=0) {
-      *f = fopen(logfile, "w");
-      printf("Log file %s is open\n",logfile);
-      opened=TRUE;
-    }
-    else {
-      printf("The name of log file %s must be different from inputfile.\n",logfile);
-    }
-  }
+  *f = fopen(fname, "w");
+  if (DynamicWriteOn) printf("%s file %s is open\n",fscript,fname);
+_L99:;
 }
 
 
@@ -304,14 +298,14 @@ void WriteIncidence(FILE *f, RayRecord *RR)
 void CheckAdjacency1(RayRecord **RP1, RayRecord **RP2,
 			    boolean *adjacent)
 {
-  long lastrow, rank;
+  long rank;
 
   *adjacent = TRUE;
   set_int(Face1, (*RP1)->ZeroSet, (*RP2)->ZeroSet);
   set_int(Face, Face1, AddedHyperplanes);
   if (debug)
     printf("Check adjacency\n");
-  if (Cardinality(Face) < nn - 2) {
+  if (Cardinality(Face)< nn - 2) {
     *adjacent = FALSE;
     return;
   }
@@ -337,7 +331,7 @@ void CheckAdjacency2(RayRecord **RP1, RayRecord **RP2,
   if (debug){
     printf("Check adjacency\n");
   }
-  if (Cardinality(Face) < nn - 2) {
+  if (Cardinality(Face)< nn - 2) {
     *adjacent = FALSE;
     return;
   }
@@ -597,47 +591,49 @@ void WriteProgramDescription(FILE *f)
 
 void WriteRunningMode(FILE *f)
 {
-  switch (HyperplaneOrder) {
+  if (Conversion==IneToExt || Conversion==ExtToIne){ 
+    switch (HyperplaneOrder) {
 
-  case LeastIndex:
-    fprintf(f, "*HyperplaneOrder: LeastIndex\n");
+    case LeastIndex:
+      fprintf(f, "*HyperplaneOrder: LeastIndex\n");
+      break;
+
+    case MinCutoff:
+      fprintf(f, "*HyperplaneOrder: MinCutoff\n");
+      break;
+
+    case MaxCutoff:
+      fprintf(f, "*HyperplaneOrder: MaxCutoff\n");
     break;
 
-  case MinCutoff:
-    fprintf(f, "*HyperplaneOrder: MinCutoff\n");
-    break;
+    case MixCutoff:
+      fprintf(f, "*HyperplaneOrder: MixCutoff\n");
+      break;
 
-  case MaxCutoff:
-    fprintf(f, "*HyperplaneOrder: MaxCutoff\n");
-    break;
+    case LexMin:
+      fprintf(f, "*HyperplaneOrder: LexMin\n");
+      break;
 
-  case MixCutoff:
-    fprintf(f, "*HyperplaneOrder: MixCutoff\n");
-    break;
+    case LexMax:
+      fprintf(f, "*HyperplaneOrder: LexMax\n");
+      break;
+    }
+    switch (AdjacencyTest) {
 
-  case LexMin:
-    fprintf(f, "*HyperplaneOrder: LexMin\n");
-    break;
+    case Combinatorial:
+      fprintf(f, "*AdjacencyTest: Combinatorial\n");
+      break;
 
-  case LexMax:
-    fprintf(f, "*HyperplaneOrder: LexMax\n");
-    break;
-  }
-  switch (AdjacencyTest) {
-
-  case Combinatorial:
-    fprintf(f, "*AdjacencyTest: Combinatorial\n");
-    break;
-
-  case Algebraic:
-    fprintf(f, "*AdjacencyTest: Algebraic\n");
-    break;
-  }
-  if (NondegAssumed) {
-    fprintf(f, "*Degeneracy preknowledge for computation: NondegenerateAssumed\n");
-   }
-  else {
-    fprintf(f, "*Degeneracy preknowledge for computation: None (possible degeneracy)\n");
+    case Algebraic:
+      fprintf(f, "*AdjacencyTest: Algebraic\n");
+      break;
+    }
+    if (NondegAssumed) {
+      fprintf(f, "*Degeneracy preknowledge for computation: NondegenerateAssumed\n");
+    }
+    else {
+      fprintf(f, "*Degeneracy preknowledge for computation: None (possible degeneracy)\n");
+    }
   }
   switch (Conversion) {
     case ExtToIne:
@@ -693,7 +689,7 @@ void WriteTimes(FILE *f)
 
 void WriteAdjacency(FILE *f)
 {
-  RayRecord *RayPtr0, *RayPtr1, *RayPtr2;
+  RayRecord *RayPtr1, *RayPtr2;
   long pos1, pos2;
   boolean adj,completed;
 
@@ -855,10 +851,19 @@ void WriteDDResult(void)
 void WriteProjRayRecord(FILE *f, RayRecord *RR, long *dbrow)
 {
   long i,j,k;
-  double vec[MMAX];
-  rowset dbset;
+  static double *vec;
+  static rowset dbset;
+  static long mprev=0, nprev=0;
 
-  set_initialize(&dbset,mm);
+  if (dbset==NULL || mprev<mm){
+     set_initialize(&dbset,mm);  
+     /* initialize only for the first time or when a larger space is needed */
+     mprev=mm;
+  }
+  if (vec==NULL || nprev<nn) {
+    vec=(double *)calloc(nn, sizeof *vec);
+    nprev=nn;
+  }
   for (j = 1; j <= mm-nn; j++){
     i=dbrow[j];
     set_addelem(dbset,i);
@@ -867,7 +872,7 @@ void WriteProjRayRecord(FILE *f, RayRecord *RR, long *dbrow)
     for (k=1; k<=nn; k++) {
       vec[i-1]+= (RR->Ray[k-1])*AA[j-1][k-1];
     }
-    if (debug) printf("vec[ %ld]= %lg \n",i-1, vec[i-1]);
+    if (debug) printf("vec[ %ld]= %.5E \n",i-1, vec[i-1]);
   }
   i=1;
   for (j = 1; j <= mm; j++){
@@ -880,7 +885,6 @@ void WriteProjRayRecord(FILE *f, RayRecord *RR, long *dbrow)
   for (j = 0; j < mm; j++)
     WriteReal(f, vec[j]);
   putc('\n', f);
-  set_free(dbset);
 }
 
 
@@ -959,6 +963,7 @@ void DDInit(void)
   set_initialize(&GroundSet, mm);
   set_initialize(&Face, mm);   /* used in CheckAdjacency  */
   set_initialize(&Face1, mm);  /* used in CheckAdjacency  */
+  InitializeBmatrix(InitialRays);
   for (i = 1; i <= mm; i++)
     set_addelem(GroundSet, i);
 }
@@ -1013,10 +1018,13 @@ void WriteErrorMessages(FILE *f)
     fprintf(f, "*Please select independent rows for partial enumeration.\n");
     break;
 
+  case FileNotFound:
+    fprintf(f, "*Input Error: Specified input file does not exist.\n");
+    break;
+
   case ImproperInputFormat:
     if (Number == Rational) {
-      fprintf(f,"*Sorry, rational input is not supported by this version of cdd.\n");
-    }
+     }
     else {
       fprintf(f,"*Input Error: Input format is not correct.\n");
       fprintf(f,"*Format:\n");
@@ -1029,11 +1037,18 @@ void WriteErrorMessages(FILE *f)
   }
 }
 
-void Initialization(void)
+void Initialization(int ARGC, char *ARGV[])
 /* Initialization of global variables */
 {
   Error=None;
   CompStatus=InProgress;
+  if (ARGC>1){
+    FileInputMode=Auto;
+    strcpy(inputfile,ARGV[1]);
+  }
+  else{
+    FileInputMode=Manual;
+  }
 }
 
 void InitialDataSetup(void)
@@ -1073,15 +1088,11 @@ void InitialDataSetup(void)
 void DDEnumerate(void)
 {
   if (IncidenceOutput == IncSet)
-    SetIncidenceFile(&writing_icd);
+    SetWriteFile(&writing_icd, icdfile, 'i', "incidence");
   if (AdjacencyOutput != AdjOff)
-    SetAdjacencyFile(&writing_adj);
+    SetWriteFile(&writing_adj, adjfile, 'a', "adjacency");
   if (LogWriteOn)
-    SetLogFile(&writing_log);
-  if (DynamicWriteOn) {
-    WriteRunningMode(stdout);
-    WriteRunningMode(writing);
-  }
+    SetWriteFile(&writing_log, logfile, 'l', "log");
   DDInit();
   FindInitialRays(InitialHyperplanes, InitialRays, &found);
   if (found) {
@@ -1106,21 +1117,17 @@ void PreProjection(void)
   long DBrank;
   
   if (IncidenceOutput == IncSet)
-    SetIncidenceFile(&writing_icd);
+    SetWriteFile(&writing_icd, icdfile, 'i', "incidence");
   if (AdjacencyOutput != AdjOff)
-    SetAdjacencyFile(&writing_adj);
+    SetWriteFile(&writing_adj, adjfile, 'a', "adjacency");
   if (LogWriteOn)
-    SetLogFile(&writing_log);
-  if (DynamicWriteOn) {
-    WriteRunningMode(stdout);
-    WriteRunningMode(writing);
-  }
+    SetWriteFile(&writing_log, logfile, 'l', "log");
   set_initialize(&subrows1,mm);
   set_initialize(&subrows2,mm);
   set_initialize(&DBrows,mm);
   set_initialize(&subcols1,nn);  /* subcol1 : projvar & RHS columns */
   set_initialize(&subcols2,nn);  /* subcol2 : remaining columns */
-  SetProjFile(&writing_proj);  
+  SetWriteFile(&writing_proj, projfile, 'p', "preprojection variable subsystem");
   for (j=1;j<=nn;j++){
     if (set_member(j,projvars) || (j==1 && Inequality==NonzeroRHS))
       set_addelem(subcols1,j);
@@ -1140,6 +1147,7 @@ void PreProjection(void)
     WriteAmatrix(stdout,AA,mm,nn,NonzeroRHS);
     WriteAmatrix(writing,AA,mm,nn,NonzeroRHS);
   }
+  InitializeBmatrix(DBinv);
   FindBasis(AA,LeastIndex,DBrows,pivrow,DBinv,&DBrank);
     /* DBrows stores the rows associated with a dual basis */
   if (debug){
@@ -1195,6 +1203,47 @@ void PreProjection(void)
   set_free(subcols2);
 }
 
+void LPMain(void)
+{
+  colindex NBIndex;  /* NBIndex[s] stores the nonbasic variable in column s */ 
+  Arow LPsol, LPdsol;  /*  LP solution and the dual solution (basic var only) */
+  rowrange re;  /* evidence row when LP is inconsistent */
+  colrange se;  /* evidence col when LP is dual-inconsistent */
+  double ov;  /* LP optimum value */
+  long LPiter;
+
+  if (Inequality==NonzeroRHS){
+    CrissCrossSolve(AA, InitialRays, OBJrow, RHScol, 
+      &LPStatus, &ov, LPsol, LPdsol,NBIndex, &re, &se, &LPiter);
+    WriteLPResult(writing, LPStatus, ov, LPsol, LPdsol, NBIndex, re, se, LPiter);
+    if (DynamicWriteOn)
+      WriteLPResult(stdout,LPStatus, ov, LPsol, LPdsol, NBIndex, re, se, LPiter);
+  }else{
+    printf("Sorry, LP maximization is not implemented for RHS==0.\n");
+  }
+}
+
+void InteriorFindMain(void)
+{
+  colindex NBIndex;  /* NBIndex[s] stores the nonbasic variable in column s */ 
+  Arow LPsol, LPdsol;  /*  LP solution and the dual solution (basic var only) */
+  rowrange re;  /* evidence row when LP is inconsistent */
+  colrange se;  /* evidence col when LP is dual-inconsistent */
+  double ov;  /* LP optimum value */
+  long LPiter;
+
+  if (Inequality==NonzeroRHS){
+    EnlargeAAforInteriorFinding();
+    OBJrow=mm; RHScol=1;
+    CrissCrossSolve(AA, InitialRays, OBJrow, RHScol, 
+      &LPStatus, &ov, LPsol, LPdsol,NBIndex, &re, &se, &LPiter);
+    WriteLPResult(writing, LPStatus, ov, LPsol, LPdsol, NBIndex, re, se, LPiter);
+    if (DynamicWriteOn)
+      WriteLPResult(stdout,LPStatus, ov, LPsol, LPdsol, NBIndex, re, se, LPiter);
+  }else{
+    printf("Sorry, find_interior is not implemented for RHS==0.\n");
+  }
+}
 
 void WriteHeading(void)
 {
@@ -1208,48 +1257,66 @@ void WriteHeading(void)
 
 void main(int argc, char *argv[])
 {
-  Arow LPsol;
-  
   writing_log = NULL;
   writing_icd = NULL;
   writing = NULL;
   reading = NULL;
   WriteHeading();
   DefaultOptionSetup();
-  Initialization();
+  Initialization(argc, argv);
   AmatrixInput(&inputsuccessful);
+
+ /*  InitProfile(200,200);                THINK C PROFILER */
+ /*  cecho2file("cdd profile", 0,stdout); THINK C PROFILER */
+ /*  _trace=0;                            THINK C PROFILER */
+
   if (inputsuccessful) {
-    SetWriteFile(&writing);
+    SetWriteFile(&writing,outputfile,'o',"output");
+    if (DynamicWriteOn) {
+      WriteRunningMode(stdout);
+      WriteRunningMode(writing);
+    }
     switch (Conversion) {
     case ExtToIne: case IneToExt: /* vertex/facets enumeration is chosen */
       DDEnumerate();
       break;
     
-    case LPmax:                   /* LP maximization is chosen */
-      if (Inequality==NonzeroRHS)
-        CrissCrossSolve(AA, InitialRays, OBJrow, RHScol, LPsol);
-      else
-        printf("Sorry, LP maximization is not implemented for RHS==0.\n");
+    case LPmax:  case LPmin:      /* LP is chosen */
+      LPMain();
       break;
 
     case Projection:              /* preprojection is chosen */
       PreProjection();
+      break;
+
+   case InteriorFind:      /* Interior point search is chosen */
+      InteriorFindMain();
       break;
   
     default: break;
     }
   } else {
     WriteErrorMessages(stdout);
-    WriteErrorMessages(writing);
+    if (writing!=NULL) WriteErrorMessages(writing);
   }
-  if (writing != NULL)
+  if (writing != NULL){
     fclose(writing);
-  if (writing_icd != NULL)
+    if (DynamicWriteOn) printf("closing the file %s\n",outputfile);
+  }
+  if (writing_icd != NULL){
     fclose(writing_icd);
-  if (writing_adj != NULL)
+    if (DynamicWriteOn) printf("closing the file %s\n",icdfile);
+  }
+  if (writing_adj != NULL){
     fclose(writing_adj);
-  if (writing_log != NULL)
+    if (DynamicWriteOn) printf("closing the file %s\n",adjfile);
+  }
+  if (writing_log != NULL){
     fclose(writing_log);
+    if (DynamicWriteOn) printf("closing the file %s\n",logfile);
+  }
+  /* DumpProfile();   THINK C PROFILER */
+  /* exit(0);         THINK C PROFILER */
 }
 
 /* End. */

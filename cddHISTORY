@@ -42,66 +42,77 @@ Version C0.26 (November 29, 1993) /
 
 Version C0.26b(December 8, 1993) / 
  - FindBasis and ComputeRank have been replaced with new programs which do not copy
-   Amatrix (for save storage and time).  Accordingly, the procedure CopyAmarix has been
-   removed.
+    Amatrix (for save storage and time).  Accordingly, the procedure CopyAmarix has been
+    removed.
 
 Version C0.27(December 8, 1993) / 
  - It uses a new versions of setoper.h and setoper.c  (Dec 8, 1993 version) which have
-   set complemen procedure   set_compl.
+    set complemen procedure   set_compl.
 
 Version C0.31(December 20, 1993) /
  - The main program cdd.c has been divided into two parts, cdd.c and cddarith.c, the latter
-   contains all the procedures dealing with floating point numbers and operations.
+    contains all the procedures dealing with floating point numbers and operations.
  - LP solver CrissCrossSolve has been added.  Now the option "maximize" can be used to
-   optimize any linear function over the polyhedron.
+    optimize any linear function over the polyhedron.
  - The setoper library has been updated to accomodate set_card(set) function.
 
 Version C0.32(Jan. 11, 1994) /
- - "preprojection" option has been added.  This option can be considered as a preprocessing
-   of orthogonal projection of the polyhedon to a subset of variables.  That is, if the inequality
-   inequality system is of form  A1 x1 + A2 x2 <= b, and the variable indices for x2, say 1, 4, 6, 7,
-   are listed in the input file as
- -------------
-  begin
-    m   n   Type
-    b  -A1  -A2
-  end
-  preprojection
-    4  1  4  6  7
- -------------
-   Then, cdd will output the inequality system,  A1 x1  <= b, together with the list R of extremal
-   rays of the homogeneous cone  {z:  z >=0  and   z A2 = 0 }.  Consequently, the inequality system
-   {r A1  x1  <=  r b  for  each r  in  R} represents the projection of the original polyhedron onto
-   x1-space with possible redundancy.   The supplementary  C program (written by F. Margot) 
-   will be used to obtain a minimal system from these two outputs.
+ -  "preprojection" option has been added.  This option can be considered as a preprocessing
+    of orthogonal projection of the polyhedon to a subset of variables.  That is, if the inequality
+    inequality system is of form  A1 x1 + A2 x2 <= b, and the variable indices for x2, say 1, 4, 6, 7,
+    are listed in the input file as
+    -------------
+    begin
+      m   n   Type
+      b  -A1  -A2
+    end
+    preprojection
+      4  1  4  6  7
+    -------------
+    Then, cdd will output the inequality system,  A1 x1  <= b, together with the list R of extremal
+    rays of the homogeneous cone  {z:  z >=0  and   z A2 = 0 }.  Consequently, the inequality system
+    {r A1  x1  <=  r b  for  each r  in  R} represents the projection of the original polyhedron onto
+    x1-space with possible redundancy.   The supplementary  C program (written by F. Margot) 
+    will be used to obtain a minimal system from these two outputs.
 
 Version C0.33(Jan. 16, 1994) /
  - partial_enumeration option has been added.  By this option, one can enumerate all vertices
-   and rays which are lying on a selected set of inequalities.  The input
- -------------
-  begin
-    m   n   Type
-    b  -A1  -A2
-  end
-  partial_enumeration
-    4  1  4  6  7
-  -------------
-   restricts the enumeration for those lying on the 1st, 4th, 6th & 7th hyperplanes.
+    and rays which are lying on a selected set of inequalities.  The input
+    -------------
+    begin
+      m   n   Type
+      b  -A1  -A2
+    end
+    partial_enumeration
+      4  1  4  6  7
+    -------------
+    restricts the enumeration for those lying on the 1st, 4th, 6th & 7th hyperplanes.
  
-Version C0.34(Jan. 22, 1994) /
+ Version C0.34(Jan. 22, 1994) /
  - adjacency option has been added to output the adjacency list of output.
  
-Version C0.35(Jan. 23, 1994) /
- - RayRecord  struct has been modified to store only a pointer for a Ray vector so that
+ Version C0.35(Jan. 23, 1994) /
+- RayRecord  struct has been modified to store only a pointer for a Ray vector so that
    the necessary space for the vector is allocated each time.  This saves a space for
    storing each RayRecord.
 
-Version C0.36(Jan. 23, 1994) /
- - RayRecord  struct has been modified to store only a pointer for a ZeroSet  so that
+ Version C0.36(Jan. 23, 1994) /
+- RayRecord  struct has been modified to store only a pointer for a ZeroSet  so that
    the necessary space for the set is allocated each time.  This saves a space for
    storing each RayRecord ZeroSet.  For this modification, the setoper library
    must have been changed so that set_initialize allocates the minimum space.
    Note that this new version (Jan. 23, 1994) does not work with the older cdd
    programs.
+
+Version C0.37(Jan. 25, 1994) /
+-  Amatrix struct has been modified to store only the row pointers.
+
+Version C0.38(Jan. 28, 1994) /
+-  Bmatrix struct has been modified to store only the row pointers.  Thus the program
+   does not use any 2-dim arrays, and uses mainly dynamic  allocation memory as much
+   as necessary irrespective of the declared maximum size  MMAX times NMAX.
+   Thus, even in Macintosh computers  large problems can be solved.
+-  CrissCrossSolve LP solver has been updated to output dual solutions as well.
+
 
 --- end of file: cddHISTORY ---
