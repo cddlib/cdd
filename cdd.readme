@@ -1,10 +1,15 @@
-1993-12-12
+1994-01-16
 This directory contains the distribution files of the software cdd:
 
      cdd.readme     This file itself
-     cdd.c          C source file
+
+     cdd.c          C main source file
+     cddarith.c     C sub source file  
+     cdd.h          The header file for cdd.c
+     cdddef.h       cdd definition file (whose two lines are to be edited by user)
      setoper.c      C library for set operation
      setoper.h      The header file for setoper.c 
+
      cddman.tex     Latex source file of cdd User Manual
      cddHISTORY     brief description of changes made at each updates
      COPYING        GNU GENERAL PUBLIC LICENSE
@@ -15,9 +20,9 @@ Before using the software, please read COPYING and
 print out the manual.  
 
 For compilation on unix environment, simply use the following:
-     % gcc cdd.c setoper.c 
+     % gcc cdd.c cddarith.c setoper.c 
 or use some optimization option like
-     % gcc -O cdd.c setoper.c 
+     % gcc -O cdd.c cddarith.c setoper.c 
 where gcc can be replaced by cc.
 
 For more information, contact

@@ -1,7 +1,7 @@
 /* setoper.c:
  * A set operation library 
  * created by Komei Fukuda, Nov.14, 1993
- * modified on Dec. 8, 1993 
+ * modified on Dec. 20, 1993 
  */
 
 #include "setoper.h"
@@ -139,11 +139,21 @@ int set_member(long elem, long set[])
 	return yes;
 }
 
+long set_card(long set[])
+/* set cardinality  */
+{
+	long elem,car=0;
+	
+	for (elem=1; elem<=set[0]; elem++) {
+		if (set_member(elem,set)) car++;
+    }
+	return car;
+}
+
 void set_write(long set[])
 {
-	long elem,forlim;
+	long elem;
 	
-	forlim=set_blocks(set[0])-1;	
 	for (elem=1;elem<=set[0];elem++)
 	{
 		if (set_member(elem,set))

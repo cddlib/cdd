@@ -3,7 +3,7 @@
 /* setoper.c: 
  * A set operation library 
  * created by Komei Fukuda, Nov.14, 1993
- * modified on Dec. 8, 1993
+ * modified on Dec. 20, 1993
  */
 
 #define SETBITS 32   /* Important Constant: Number of bits in a long integer */
@@ -20,6 +20,7 @@ void set_diff(long set[],long set1[],long set2[]);
 void set_compl(long set[],long set1[]);
 int set_subset(long set1[],long set2[]);
 int set_member(long elem, long set[]);
+long set_card(long set[]);
 void set_write(long set[]);
 void set_binwrite(long set[]);
 
