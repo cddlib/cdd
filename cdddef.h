@@ -1,6 +1,6 @@
 /* cdddef.h:  Definition file for cdd.c 
    written by Komei Fukuda, fukuda@dma.epfl.ch
-   Version 0.33,  Jan. 16, 1994 
+   Version 0.36,  Jan. 23, 1994
 */
 
 /* cdd.c : C-Implementation of the double description method for
@@ -10,14 +10,11 @@
    the manual cddman.tex for detail.
 */
 
-#define MMAX           101  /* USER'S CHOICE: max row size of A plus one */
-#define NMAX            33   /* USER'S CHOICE: max column size of A plus one */
+#define MMAX           102  /* USER'S CHOICE: max row size of A plus one */
+#define NMAX            42   /* USER'S CHOICE: max column size of A plus one */
 
-#define SETBITS 32        /* Important Constant: Number of bits in a long integer    */
 #define rowsetsize MMAX   /* The size of the column index set */
 #define colsetsize NMAX   /* The size of the row index set */
-#define rowsetblocks (rowsetsize-1)/SETBITS+2   /* Number of (long) blocks for row set */
-#define colsetblocks (colsetsize-1)/SETBITS+2   /* Number of (long) blocks for column set */
 
 #define datawidth       10
 #define filenamelen     255 

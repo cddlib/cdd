@@ -1,5 +1,5 @@
 #define COPYRIGHT   "Copyright (C) 1994, Komei Fukuda, fukuda@dma.epfl.ch"
-#define DDVERSION   "Version C0.33 (January 16, 1994)"
+#define DDVERSION   "Version C0.36 (January 23, 1994)"
 
 /*  This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -44,7 +44,7 @@ colrange RHScol;
 rowrange OBJrow;
 colset projvars;   /*set of variables spanning the space of preprojection, 
      i.e. the remaining variables are to be removed*/
-rowset MarkedSet, GroundSet;
+rowset MarkedSet, GroundSet, Face, Face1;
 rowrange Iteration, hh;
 rowset AddedHyperplanes, InitialHyperplanes;
 long RayCount, FeasibleRayCount, TotalRayCount, VertexCount;
@@ -64,9 +64,10 @@ boolean PartialEnumeration; /* Partial enumeration Switch (TRUE if it is restric
 CompStatusType CompStatus;  /* Computation Status */
 ConversionType Conversion;
 IncidenceOutputType IncidenceOutput;
+AdjacencyOutputType AdjacencyOutput;
 ErrorType Error;
-DataFileType inputfile,outputfile,projfile,icdfile,logfile;
-FILE *reading, *writing, *writing_proj, *writing_icd, *writing_log;
+DataFileType inputfile,outputfile,projfile,icdfile,adjfile,logfile;
+FILE *reading, *writing, *writing_proj, *writing_icd, *writing_adj,*writing_log;
 time_t starttime, endtime;
 
 
@@ -82,6 +83,7 @@ void DefaultOptionSetup(void)
   Conversion = IneToExt;
     
   IncidenceOutput = IncOff;
+  AdjacencyOutput = AdjOff;
   InitBasisAtBottom = FALSE;
 }
 
@@ -157,6 +159,26 @@ void SetIncidenceFile(FILE **f)
     }
     else {
       printf("The name of incidence file %s must be different from inputfile.\n",icdfile);
+    }
+  }
+}
+
+void SetAdjacencyFile(FILE **f)
+{
+  boolean opened=FALSE;
+  char ch;
+  long i;
+
+  while (!opened) {
+    printf("\n>> Adjacency file (*.adj): ");
+    scanf("%s",adjfile);
+    if (strcmp(inputfile, adjfile)!=0) {
+      *f = fopen(adjfile, "w");
+      printf("Adjacency file %s is open\n",adjfile);
+      opened=TRUE;
+    }
+    else {
+      printf("The name of adjacency file %s must be different from inputfile.\n",icdfile);
     }
   }
 }
@@ -254,7 +276,7 @@ void WriteIncidence(FILE *f, RayRecord *RR)
   rowset cset;
   long zcar;
 
-  set_initialize(cset,rowsetsize);
+  set_initialize(&cset,mm);
   zcar = Cardinality(RR->ZeroSet);
   switch (IncidenceOutput) {
 
@@ -274,6 +296,7 @@ void WriteIncidence(FILE *f, RayRecord *RR)
     break;
   }
   putc('\n', f);
+  set_free(cset);
 }
 
 
@@ -281,14 +304,11 @@ void WriteIncidence(FILE *f, RayRecord *RR)
 void CheckAdjacency1(RayRecord **RP1, RayRecord **RP2,
 			    boolean *adjacent)
 {
-  rowset Face, SET;
   long lastrow, rank;
 
   *adjacent = TRUE;
-  set_initialize(SET,rowsetsize);
-  set_initialize(Face,rowsetsize);
-  set_int(SET, (*RP1)->ZeroSet, (*RP2)->ZeroSet);
-  set_int(Face, SET, AddedHyperplanes);
+  set_int(Face1, (*RP1)->ZeroSet, (*RP2)->ZeroSet);
+  set_int(Face, Face1, AddedHyperplanes);
   if (debug)
     printf("Check adjacency\n");
   if (Cardinality(Face) < nn - 2) {
@@ -300,25 +320,23 @@ void CheckAdjacency1(RayRecord **RP1, RayRecord **RP2,
   	return;
   }
   ComputeRank(AA,Face,&rank);
-  if (rank < nn - 2)
+  if (rank < nn - 2){
     *adjacent = FALSE;
+  }
 }
 
 
 void CheckAdjacency2(RayRecord **RP1, RayRecord **RP2,
 			    boolean *adjacent)
 {
-  rowset Face;
   RayRecord *TempRay;
-  rowset SET;
 
   *adjacent = TRUE;
-  set_initialize(SET,rowsetsize);
-  set_initialize(Face,rowsetsize);
-  set_int(SET, (*RP1)->ZeroSet, (*RP2)->ZeroSet);
-  set_int(Face, SET, AddedHyperplanes);
-  if (debug)
+  set_int(Face1, (*RP1)->ZeroSet, (*RP2)->ZeroSet);
+  set_int(Face, Face1, AddedHyperplanes);
+  if (debug){
     printf("Check adjacency\n");
+  }
   if (Cardinality(Face) < nn - 2) {
     *adjacent = FALSE;
     return;
@@ -330,8 +348,8 @@ void CheckAdjacency2(RayRecord **RP1, RayRecord **RP2,
   TempRay = FirstRay;
   while (TempRay != NULL && *adjacent) {
     if (TempRay != *RP1 && TempRay != *RP2) {
-    	set_int(SET, TempRay->ZeroSet, AddedHyperplanes);
-      	if (set_subset(Face, SET))
+    	set_int(Face1, TempRay->ZeroSet, AddedHyperplanes);
+      	if (set_subset(Face, Face1))
 			*adjacent = FALSE;
     }
     TempRay = TempRay->Next;
@@ -355,8 +373,10 @@ void Eliminate(RayRecord **Ptr)
     FirstRay = (*Ptr)->Next;
   if (TempPtr == LastRay)   /*Update the last pointer*/
     LastRay = *Ptr;
-  free(TempPtr);
-  RayCount--;
+  free(TempPtr->Ray);          /* free the ray vector memory */
+  set_free(TempPtr->ZeroSet);  /* free the ZeroSet memory */
+  free(TempPtr);   /* free the RayRecord structure memory */
+  RayCount--; 
 }
 
 
@@ -671,6 +691,76 @@ void WriteTimes(FILE *f)
   fprintf(f, "*                     = %ld hour %ld min %ld sec\n", ptime_hour,ptime_minu,ptime_sec);
 }
 
+void WriteAdjacency(FILE *f)
+{
+  RayRecord *RayPtr0, *RayPtr1, *RayPtr2;
+  long pos1, pos2;
+  boolean adj,completed;
+
+  switch (Conversion) {
+  case IneToExt:
+    if (AdjacencyOutput==OutputAdjacency)
+      fprintf(writing_adj,
+	    "*Adjacency List of output (=vertices/rays)\n");
+    break;
+  case ExtToIne:
+    if (AdjacencyOutput==OutputAdjacency)
+      fprintf(writing_adj,
+	    "*Adjacency List of output (=inequalities=facets)\n");
+      break;
+    }
+  fprintf(writing_adj, "*cdd input file : %s   (%4ld  x %4ld)\n",
+	  inputfile, minput, ninput);
+  fprintf(writing_adj, "*cdd output file: %s\n", outputfile);
+  fprintf(writing_adj,
+	"*Warning: the adjacency list below is minimal, i.e., no duplication!\n");
+  fprintf(f,"begin\n");
+  fprintf(f,"  %ld\n",RayCount);
+  RayPtr1 = FirstRay;        /*1st hnew-infeasible ray to scan and compare with feasible rays*/ 
+  pos1=1;
+  fprintf(f,"  %ld :",pos1);
+  if (RayPtr1==LastRay){
+    completed=TRUE;
+  }
+  else {
+    completed=FALSE;
+    RayPtr2 = RayPtr1->Next;
+    pos2=2;
+  }
+  while (!completed) {
+    switch (AdjacencyTest) {
+
+    case Algebraic:
+      CheckAdjacency1(&RayPtr1, &RayPtr2, &adj);
+      break;
+
+    case Combinatorial:
+      CheckAdjacency2(&RayPtr1, &RayPtr2, &adj);
+	  break;
+    }
+    if (adj) {
+      fprintf(f," %ld ",pos2);
+    }
+    if (RayPtr2 != LastRay) {
+      RayPtr2 = RayPtr2->Next;
+      pos2++;
+      continue;
+    }
+    else {
+      RayPtr1 = RayPtr1->Next;
+      pos1++;
+      fprintf(f,"\n  %ld :",pos1);
+      if (RayPtr1==LastRay) {
+        completed=TRUE;
+      }
+      else {
+        RayPtr2 = RayPtr1->Next;
+        pos2=pos1+1;
+      }
+    }
+  }
+  fprintf(f,"\nend\n");
+}
 
 void WriteDDResult(void)
 {
@@ -712,8 +802,6 @@ void WriteDDResult(void)
   }
   if (IncidenceOutput == IncSet) {
     writing_icd=freopen(icdfile,"w",writing_icd);
-    fprintf(writing_icd, "*Input File:%.*s   (%4ld  x %4ld)\n",
-	  filenamelen, inputfile, minput, ninput);
     switch (Conversion) {
     case IneToExt:
       fprintf(writing_icd,
@@ -732,6 +820,9 @@ void WriteDDResult(void)
 	    "*   or its complement with its cardinality with minus sign\n");
       break;
     }
+    fprintf(writing_icd, "*cdd input file : %s   (%4ld  x %4ld)\n",
+	  inputfile, minput, ninput);
+    fprintf(writing_icd, "*cdd output file: %s\n", outputfile);
     fprintf(writing_icd, "begin\n");
     fprintf(writing_icd, "%8ld%5ld%5ld\n", RayCount, minput, mm);
   }
@@ -755,6 +846,10 @@ void WriteDDResult(void)
   }
   if (IncidenceOutput == IncSet)
     fprintf(writing_icd, "end\n");
+  if (AdjacencyOutput != AdjOff){
+    if (DynamicWriteOn) printf("Writing the adjacency file...\n");
+    WriteAdjacency(writing_adj);
+  }
 }
 
 void WriteProjRayRecord(FILE *f, RayRecord *RR, long *dbrow)
@@ -763,7 +858,7 @@ void WriteProjRayRecord(FILE *f, RayRecord *RR, long *dbrow)
   double vec[MMAX];
   rowset dbset;
 
-  set_initialize(dbset,rowsetsize);
+  set_initialize(&dbset,mm);
   for (j = 1; j <= mm-nn; j++){
     i=dbrow[j];
     set_addelem(dbset,i);
@@ -785,6 +880,7 @@ void WriteProjRayRecord(FILE *f, RayRecord *RR, long *dbrow)
   for (j = 0; j < mm; j++)
     WriteReal(f, vec[j]);
   putc('\n', f);
+  set_free(dbset);
 }
 
 
@@ -827,6 +923,10 @@ void WriteProjResult(long *dbrow)
     WriteCompletionStatus(writing_log);
     WriteTimes(writing_log);
   }
+  if (AdjacencyOutput != AdjOff){
+    if (DynamicWriteOn) printf("Writing the adjacency file...\n");
+    WriteAdjacency(writing_adj);
+  }
 }
 
 void InitialWriting(void)
@@ -850,6 +950,18 @@ void InitialWriting(void)
   }
 }
 
+void DDInit(void)
+{
+  long i;
+
+  set_initialize(&InitialHyperplanes,mm);
+  set_initialize(&AddedHyperplanes,mm);
+  set_initialize(&GroundSet, mm);
+  set_initialize(&Face, mm);   /* used in CheckAdjacency  */
+  set_initialize(&Face1, mm);  /* used in CheckAdjacency  */
+  for (i = 1; i <= mm; i++)
+    set_addelem(GroundSet, i);
+}
 
 void DDMain(void)
 {
@@ -864,7 +976,10 @@ void DDMain(void)
 	     Iteration, hh);
     }
     AddNewHyperplane(hh);
-    if (CompStatus==AllFound||CompStatus==RegionEmpty) goto _L99;
+    if (CompStatus==AllFound||CompStatus==RegionEmpty) {
+      set_addelem(AddedHyperplanes, hh);
+      goto _L99;
+    }
     if (LogWriteOn)
       fprintf(writing_log, "%3ld %5ld %6ld %6ld %6ld\n",
 	      Iteration, hh, TotalRayCount, RayCount, FeasibleRayCount);
@@ -915,11 +1030,8 @@ void WriteErrorMessages(FILE *f)
 }
 
 void Initialization(void)
-/* Initialization of global set variables */
+/* Initialization of global variables */
 {
-  set_initialize(InitialHyperplanes,rowsetsize);
-  set_initialize(AddedHyperplanes,rowsetsize);
-  set_initialize(GroundSet, rowsetsize);
   Error=None;
   CompStatus=InProgress;
 }
@@ -938,9 +1050,7 @@ void InitialDataSetup(void)
   ArtificialRay = NULL;
   FirstRay = NULL;
   LastRay = NULL;
-  set_initialize(ZSet,rowsetsize);
-  for (j = 1; j <= mm; j++)
-    set_addelem(GroundSet, j);
+  set_initialize(&ZSet,mm);
   AddArtificialRay();
   Iteration = nn;   /*Initially,we have already  nn  hyperplanes */
   set_copy(AddedHyperplanes, InitialHyperplanes);
@@ -957,18 +1067,22 @@ void InitialDataSetup(void)
       AddRay(Vector);
     }
   }
+  set_free(ZSet);
 }
 
 void DDEnumerate(void)
 {
   if (IncidenceOutput == IncSet)
     SetIncidenceFile(&writing_icd);
+  if (AdjacencyOutput != AdjOff)
+    SetAdjacencyFile(&writing_adj);
   if (LogWriteOn)
     SetLogFile(&writing_log);
   if (DynamicWriteOn) {
     WriteRunningMode(stdout);
     WriteRunningMode(writing);
   }
+  DDInit();
   FindInitialRays(InitialHyperplanes, InitialRays, &found);
   if (found) {
     InitialDataSetup();
@@ -993,16 +1107,19 @@ void PreProjection(void)
   
   if (IncidenceOutput == IncSet)
     SetIncidenceFile(&writing_icd);
+  if (AdjacencyOutput != AdjOff)
+    SetAdjacencyFile(&writing_adj);
   if (LogWriteOn)
     SetLogFile(&writing_log);
   if (DynamicWriteOn) {
     WriteRunningMode(stdout);
     WriteRunningMode(writing);
   }
-  set_initialize(subrows1,rowsetsize);
-  set_initialize(subrows2,rowsetsize);
-  set_initialize(subcols1,colsetsize);  /* subcol1 : projvar & RHS columns */
-  set_initialize(subcols2,colsetsize);  /* subcol2 : remaining columns */
+  set_initialize(&subrows1,mm);
+  set_initialize(&subrows2,mm);
+  set_initialize(&DBrows,mm);
+  set_initialize(&subcols1,nn);  /* subcol1 : projvar & RHS columns */
+  set_initialize(&subcols2,nn);  /* subcol2 : remaining columns */
   SetProjFile(&writing_proj);  
   for (j=1;j<=nn;j++){
     if (set_member(j,projvars) || (j==1 && Inequality==NonzeroRHS))
@@ -1059,6 +1176,7 @@ void PreProjection(void)
     WriteRunningMode(stdout);
     WriteRunningMode(writing);
   }
+  DDInit();
   FindInitialRays(InitialHyperplanes, InitialRays, &found);
   if (found) {
     InitialDataSetup();
@@ -1070,6 +1188,11 @@ void PreProjection(void)
     WriteErrorMessages(stdout);
     WriteErrorMessages(writing);
   }
+  set_free(subrows1);
+  set_free(subrows2);
+  set_free(DBrows);
+  set_free(subcols1);
+  set_free(subcols2);
 }
 
 
@@ -1123,6 +1246,8 @@ void main(int argc, char *argv[])
     fclose(writing);
   if (writing_icd != NULL)
     fclose(writing_icd);
+  if (writing_adj != NULL)
+    fclose(writing_adj);
   if (writing_log != NULL)
     fclose(writing_log);
 }

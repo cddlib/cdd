@@ -1,0 +1,12 @@
+*Adjacency List of output (=vertices/rays)
+*cdd input file : ine/ucube.ine   (   5  x    4)
+*cdd output file: ext/ucube.ext
+*Warning: the adjacency list below is minimal, i.e., no duplication!
+begin
+  5
+  1 : 2  3  4  5 
+  2 : 3  4 
+  3 : 5 
+  4 : 5 
+  5 :
+end

@@ -37,7 +37,7 @@
 }
 
 \vspace{20mm}
-{\Large (cdd Version 0.27,  December 14, 1993)}
+{\Large (cdd Version 0.36,  January 24, 1994)}
 
 \end{center}
 
@@ -56,7 +56,7 @@
    University of Tsukuba, Tokyo, Japan}
 
 \bigskip
-{\large (cdd Version 0.26,  November 30, 1993)}
+{\large (cdd Version 0.36,  January 24, 1993)}
 
 \end{center}
 
@@ -214,7 +214,7 @@ vertices and extremal rays, the input file for cdd is
 file name: ucube.ine
 3 cube without one "lid"
 begin
-        5      4     integer
+        5      4    integer
   2   -1   0   0
   2    0  -1   0
  -1    1   0   0
@@ -222,22 +222,24 @@ begin
  -1    0   0   1
 end
 incidence
+adjacency
 \end{verbatim}
 
-The meaning of option ^^ ^^ incidence" will be explained
-in Section~\ref{OPTIONS}.
+The meaning of options ^^ ^^ incidence" and ^^ ^^ adjacency" 
+will be explained in Section~\ref{OPTIONS}.
 After you run cdd with this input file, you will get
 an output file, say ucube.ext, which looks like:
 
 \begin{verbatim}
-* cdd: Double Description Method C-Code:Version C0.27 (December 8, 1993)
-* Copyright (C) 1993, Komei Fukuda, fukuda@dma.epfl.ch
-*Input File:ucube.ine   (   5  x    4)
+* cdd: Double Description Method C-Code:Version C0.36 (January 23, 1994)
+* Copyright (C) 1994, Komei Fukuda, fukuda@dma.epfl.ch
+*Input File:ine/ucube.ine   (   5  x    4)
 *HyperplaneOrder: LexMin
 *AdjacencyTest: Combinatorial
 *Degeneracy preknowledge for computation: None (possible degeneracy)
-*Computation starts     at Mon Dec 13 14:46:18 1993
-*            terminates at Mon Dec 13 14:46:18 1993
+*Vertex/Ray enumeration is chosen.
+*Computation starts     at Mon Jan 24 12:20:28 1994
+*            terminates at Mon Jan 24 12:20:28 1994
 *Total processor time = 0 seconds
 *                     = 0 hour 0 min 0 sec
 *FINAL RESULT:
@@ -326,10 +328,11 @@ an inequality $a^T \; x \le b$ if  $a^T \; r = 0$.  For example,
 since the incidence option was set for the example input file ucube.ine in
 the previous section, the program outputs the following ucube.icd file:
 \begin{verbatim}
-*Input File:ucube.ine   (   5  x    4)
 *Incidences of output(=vertices/rays) and input (=hyperplanes)
 *   for each output, #incidence and the set of hyperplanes containing it
 *   or its complement with its cardinality with minus sign
+*cdd input file : ine/ucube.ine   (   5  x    4)
+*cdd output file: ext/ucube.ext
 begin
        5    5    6
       -1    5
@@ -373,6 +376,7 @@ The {\bf \#incidence} option can be used when you do not wish
 to output the incidence file but to output only the cardinality of incidence
 for each output, at the end of each output line.
 
+
 \item[nondegenerate] option\\
 When this option is set, the program assumes that the input system
 is not degenerate, i.e., each vertex of the polyhedron satisfies
@@ -382,6 +386,33 @@ It will run much faster with this option, but of course,
 if this option is set for degenerate inputs, it is 
 quite possible that the output is incorrect.  
 The default is this option being off.
+
+\item[adjacency] option\\
+This option can be used when you want to output the adjacency of output.
+When the output is the list of vertices and rays, the program will
+output the adjacency list.  For the example input ^^ ^^ ucube.ine",
+the following extra file, say ^^ ^^ ucube.adj", will be created:
+\begin{verbatim}
+*Adjacency List of output (=vertices/rays)
+*cdd input file : ucube.ine   (   5  x    4)
+*cdd output file: ucube.ext
+*Warning: the adjacency list below is minimal, i.e., no duplication!
+begin
+  5
+  1 : 2  3  4  5 
+  2 : 3  4 
+  3 : 5 
+  4 : 5 
+  5 :
+end
+\end{verbatim}
+The first line $ 1\: : 2 \quad  3 \quad  4 \quad  5 $ says that the first output of
+ucube.ext file, the only ray, is adjacent to all four vertices. As you
+see, each adjacency is listed once.  For example, the adjacency of vertices $3$ and $5$
+is listed only for the smaller vertex $3$ but not for $5$.
+
+When the computation is to obtain the hull (inequality system),
+the adjacency is of course that of inequalities (i.e. facets).
 
 \item[mincutoff, maxcutoff, mixcutoff, lexmin, lexmax, minindex] options\\
 The double description is an incremental algorithm which
@@ -428,6 +459,42 @@ is not applicable, i.e. when one of mincutoff or maxcutoff
 options is chosen. In such cases, {\bf lexmin\/}
 ordering will be chosen.
 
+\item[maximize] option\\
+When this option is set with an objective vector 
+$c_0\: c_1 \: c_2 \ldots c_d$, the program
+simply solves the linear program: $\max c_0 + c_1 x_1 + c_2 x_2 +\cdots + c_d x_d$
+over the input polyhedron $P$.
+See the sample input file ^^ ^^ lptest.ine".
+
+\item[partial\_enumeration] option\\
+With this option, one can enumerate only those
+vertices and rays that are lying on a selected set of inequalities.
+See the input file ^^ ^^ partialtest.ine".
+
+\item[preprojection] option\\
+This option is for a preprocessing
+ of orthogonal projection of the polyhedon to a subset of variables.  
+That is, if the inequality inequality system is of two-block form  $A1 x1 + A2 x2 \le b$, 
+and the variable indices for $x2$, say $1, 4, 6, 7$,
+are listed in the input file as
+\begin{verbatim}
+begin
+  m   d+1   Type
+  b   -A1  -A2
+end
+preprojection
+  4  1  4  6  7
+\end{verbatim}
+    
+Then, cdd will output the inequality system,  $A1 x1  \le b$, together with the list $R$ of extremal
+rays of the homogeneous cone  $\{z:  z  \ge 0  \mbox{ and }  z A2 = 0 \}$.  
+Consequently, the inequality system
+$\{ \quad r A1  x1  \le  r b : \quad r \in  R \}$
+represents the projection of the original polyhedron onto
+x1-space with possible redundancy.   There is a supplementary  C program, 
+written by F. Margot, EPFL, which generates quickly a minimal
+(i.e. nonredundant) system from these two outputs.
+We are now preparing to distribute this program with cdd.
 \end{description}
 
 \section{Source Files and Compilation}  \label{CAUTIONS}
@@ -437,46 +504,54 @@ ordering will be chosen.
 \item[(1)] [Files and Compilation] The source files for distribution are
 
 \begin{tabular}{ll}
-cdd.c  &  the cdd C source code \\
-setoper.c  &  a set operation library code \\
-setoper.h  &  the header file for setoper.c \\
-cddman.tex &  the latex source file of this manual \\
-cddHISTORY &  brief description of changes made at each updates \\
-ccc5.ine, etc.  &  sample input files (stored in ^^ ^^ ine" subdirectory)\\
-ccc5.ext, etc.  &  sample output files (stored in ^^ ^^ ext" subdirectory)\\
-COPYING    &  GNU GENERAL PUBLIC LICENSE.\\
+     cdd.readme  &   This file itself\\
+     cdd.c       &   C main source file\\
+     cddarith.c  &   C sub source file\\  
+     cdd.h       &   The header file for cdd.c\\
+     cdddef.h    &   cdd definition file (whose two lines are to be edited by user)\\
+     setoper.c   &   C library for set operation\\
+     setoper.h   &   The header file for setoper.c \\
+     cddman.tex  &  Latex source file of cdd User Manual\\
+     cddHISTORY  &   brief description of changes made at each updates\\
+     ine         &   A subdirectory containing sample input files\\
+     ext         &   A subdirectory containing sample output files\\
+     COPYING     &   GNU GENERAL PUBLIC LICENSE
 \end{tabular}
 
 \noindent
 To compile the code in standard unix environment, type
 \begin{verbatim}
-  cc -O cdd.c setoper.c
+  cc -O cdd.c cddarith.c setoper.c
 \end{verbatim}
 
-to obtain an optimized executable file a.out. 
+to obtain an optimized executable file a.out. The GNU compiler
+gcc can replace cc above.
 Since the program includes some standard ANSI library 
 headers such as stdlib.h and time.h at compilation, 
 the compiler must know the locations of the standard ANSI libraries.
-Also, the files cdd.c, setoper.c and setoper.h are supposed to be
+Also, the files cdd.c, cdd.h, cdddef.h, cddarith.c, setoper.c and setoper.h are supposed to be
 in the current directory.
 
-\item[(2)] [Recompilation] The first two constants in the program cdd.c are to be 
+\item[(2)] [Recompilation] The first two constants in the program cdddef.h are to be 
 changed by the user, and the program must be recompiled
 each time any change is made.   These constants are simply
 to specify the largest size of acceptable input data $(b, -A)$: 
 \begin{verbatim}
-#define mmax     201  /* USER'S CHOICE: max row size of A plus one */
-#define nmax     24   /* USER'S CHOICE: max column size of A plus one */
+#define MMAX    102  /* USER'S CHOICE: max row size of A plus one */
+#define NMAX    82   /* USER'S CHOICE: max column size of A plus one */
 \end{verbatim}
 If this input data has $m$ rows and $d+1$ columns, then in the program,
-mmax should be at least $m+1$ and $nmax$ should be at least
-$d+1$.  It is strongly recommended to keep the size  nmax  as small as
-possible because any temporary vertices and rays are stored with
-arrays of this size.  Also, the set operation is performed frequently
-by the program cdd on sets with size mmax, and thus the smaller the size mmax
-is, the faster the program runs. 
+MMAX should be at least $m+1$ and NMAX should be at least
+$d+1$.  Although it is recommended to set the sizes MMAX and NMAX moderately, 
+MMAX=600 and NMAX=100 should not be any problem if you use a workstation with 16 mbyte memory.
+These sizes are only for storing the input data, and 
+any temporary vertices and rays are stored with
+arrays of smallest possible size, independent of MMAX or NMAX.  
+Also, the set operation is performed frequently
+by the program cdd on sets with this minimum size, and thus smaller MMAX nor NMAX
+do not accelerate the execution of cdd.
 
-Unlike the pascal version pdd, one can set the size mmax as large as one
+Unlike the pascal version pdd, one can set the size MMAX as large as one
 wants.  It is no more restricted by the SET TYPE element sizes of 
 usual Pascal compilers.
 
@@ -490,8 +565,17 @@ cdd.c and setoper.c.  We have not yet tried to compile it with TURBO C.
 \item[(4)] [Rational Input Not Supported] The present cdd.c does not
 read any RATIONAL numbers ($a/b$ type with $a$, $b$ integers).
 
-
 \end{itemize}
+
+\section{FTP site}  \label{FTP}
+An anonymous ftp site for the programs is set at EPFL:
+\begin{verbatim}
+   ftpsite:  ftp.epfl.ch (128.178.139.3)
+   directory: incoming/dma
+   filename: cdd-***.tar.Z
+\end{verbatim}
+Since the file is compressed binary file, it is necessary to use binary mode for
+file transfer.
 
 \bigskip
 \noindent

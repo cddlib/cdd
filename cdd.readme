@@ -1,4 +1,4 @@
-1994-01-16
+1994-01-24
 This directory contains the distribution files of the software cdd:
 
      cdd.readme     This file itself
@@ -12,9 +12,9 @@ This directory contains the distribution files of the software cdd:
 
      cddman.tex     Latex source file of cdd User Manual
      cddHISTORY     brief description of changes made at each updates
-     COPYING        GNU GENERAL PUBLIC LICENSE
      ine            A subdirectory containing sample input files
      ext            A subdirectory containing sample output files
+     COPYING        GNU GENERAL PUBLIC LICENSE
 
 Before using the software, please read COPYING and
 print out the manual.  

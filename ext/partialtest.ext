@@ -1,0 +1,34 @@
+* cdd: Double Description Method C-Code:Version C0.36 (January 23, 1994)
+* Copyright (C) 1994, Komei Fukuda, fukuda@dma.epfl.ch
+*Input File:partialtest.ine   (  12  x    7)
+*HyperplaneOrder: LexMin
+*AdjacencyTest: Combinatorial
+*Degeneracy preknowledge for computation: None (possible degeneracy)
+*Vertex/Ray enumeration is chosen.
+*Partial enumeration is chosen.  The permanently active rows are:    1   12
+*Computation completed at Iteration   12.
+*Computation starts     at Mon Jan 24 14:14:19 1994
+*            terminates at Mon Jan 24 14:14:19 1994
+*Total processor time = 0 seconds
+*                     = 0 hour 0 min 0 sec
+*FINAL RESULT:
+*Number of Vertices =      16,   Rays =       0
+begin
+       16      7    real
+  1  0  0  0  0  0  1
+  1  0  1  0  0  0  1
+  1  0  0  1  0  0  1
+  1  0  1  1  0  0  1
+  1  0  0  0  1  0  1
+  1  0  1  0  1  0  1
+  1  0  0  1  1  0  1
+  1  0  1  1  1  0  1
+  1  0  0  0  0  1  1
+  1  0  1  0  0  1  1
+  1  0  0  1  0  1  1
+  1  0  1  1  0  1  1
+  1  0  0  0  1  1  1
+  1  0  1  0  1  1  1
+  1  0  0  1  1  1  1
+  1  0  1  1  1  1  1
+end

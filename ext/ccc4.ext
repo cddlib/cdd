@@ -1,12 +1,12 @@
-* cdd: Double Description Method C-Code:Version C0.27 (December 8, 1993)
-* Copyright (C) 1993, Komei Fukuda, fukuda@dma.epfl.ch
-*Input File:ccc4.ine   (   7  x    7)
+* cdd: Double Description Method C-Code:Version C0.36 (January 23, 1994)
+* Copyright (C) 1994, Komei Fukuda, fukuda@dma.epfl.ch
+*Input File:ine/ccc4.ine   (   7  x    7)
 *HyperplaneOrder: LexMin
 *AdjacencyTest: Combinatorial
 *Degeneracy preknowledge for computation: None (possible degeneracy)
 *Hull computation is chosen.
-*Computation starts     at Mon Dec 13 14:40:03 1993
-*            terminates at Mon Dec 13 14:40:03 1993
+*Computation starts     at Mon Jan 24 12:18:48 1994
+*            terminates at Mon Jan 24 12:18:48 1994
 *Total processor time = 0 seconds
 *                     = 0 hour 0 min 0 sec
 *Since hull computation is chosen, the output is a minimal inequality system

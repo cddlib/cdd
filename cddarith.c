@@ -1,6 +1,6 @@
 /* cddarith.c:  Floating Point Arithmetic Procedures for cdd.c
    written by Komei Fukuda, fukuda@dma.epfl.ch
-   Version 0.33, Jan. 16, 1994 
+   Version 0.36, Jan. 23, 1994 
 */
 
 /* cdd.c : C-Implementation of the double description method for
@@ -54,6 +54,10 @@ void ProcessCommandLine(char *line)
   }
   if (strncmp(line, "#incidence", 10)==0) {
     IncidenceOutput = IncCardinality;
+    return;
+  }
+  if (strncmp(line, "adjacency", 9)==0) {
+    AdjacencyOutput = OutputAdjacency;
     return;
   }
   if (strncmp(line, "algebraic", 9)==0) {
@@ -113,7 +117,7 @@ void ProcessCommandLine(char *line)
     return;
   }
   if (strncmp(line, "preprojection", 13)==0 && Conversion != Projection) {
-    set_initialize(projvars,colsetsize);
+    set_initialize(&projvars,nn);
     fscanf(reading,"%ld", &projdim);
     if (debug) printf("dimension of projection = %ld  in variables:\n",projdim);
     for (j=1;j<=projdim;j++) {
@@ -150,9 +154,6 @@ void AmatrixInput(boolean *successful)
   char command[wordlenmax], numbtype[wordlenmax], stemp[wordlenmax];
 
   *successful = FALSE;
-
-  PartialEnumeration = FALSE;
-  set_initialize(MarkedSet, rowsetsize);
 
   SetInputFile(&reading);
   while (!found)
@@ -225,6 +226,10 @@ void AmatrixInput(boolean *successful)
     if (debug)
       putchar('\n');
   }  /*of i*/
+  
+  PartialEnumeration = FALSE;
+  set_initialize(&MarkedSet, minput+1);
+
   while (!feof(reading)) {
     fscanf(reading,"%s", command);
     ProcessCommandLine(command);
@@ -337,10 +342,9 @@ void StoreRay(double *p, RayRecord *RR, boolean *feasible)
   rowrange i;
   colrange j;
   double temp;
-  rowset SET;
 
   *feasible = TRUE;
-  set_initialize(RR->ZeroSet,rowsetsize);
+  set_initialize(&(RR->ZeroSet),mm);
   RR->ARay = 0.0;
   for (j = 0; j < nn; j++)
     RR->Ray[j] = p[j];
@@ -357,15 +361,18 @@ void StoreRay(double *p, RayRecord *RR, boolean *feasible)
 void AddRay(double *p)
 {  
   boolean feasible;
+  double x;
 
   if (FirstRay == NULL) {
     FirstRay = (struct RayRecord *) malloc(sizeof *FirstRay);
+    FirstRay->Ray = (double *) calloc(nn, sizeof x);
     if (debug)
       printf("Create the first ray pointer\n");
     LastRay = FirstRay;
     ArtificialRay->Next = FirstRay;
   } else {
     LastRay->Next = (struct RayRecord *) malloc(sizeof *FirstRay);
+    LastRay->Next->Ray = (double *) calloc(nn, sizeof x);
     if (debug)
       printf("Create a new ray pointer\n");
     LastRay = LastRay->Next;
@@ -402,12 +409,14 @@ void AddArtificialRay(void)
   Arow zerovector;
   long j;
   boolean feasible;
+  double x;
 
   if (ArtificialRay != NULL) {
     printf("Warning !!!  FirstRay in not nil.  Illegal Call\n");
     return;
   }
   ArtificialRay = (struct RayRecord *) malloc(sizeof *ArtificialRay);
+  ArtificialRay->Ray = (double *) calloc(nn, sizeof x);
   if (debug)
     printf("Create the artificial ray pointer\n");
   for (j = 0; j < nn; j++)
@@ -433,20 +442,17 @@ void Normalize(double *V)
 }
 
 
-void ZeroIndexSet(double *x, long *ZS)
+void ZeroIndexSet(double *x, rowset ZS)
 {
   rowrange i;
-  rowset tempset;
   double temp;
-  rowset SET;
 
-  set_initialize(tempset,rowsetsize);
+  set_emptyset(ZS);
   for (i = 1; i <= mm; i++) {
     temp = AValue(x, i);
     if (fabs(temp) < zero)
-      set_addelem(tempset, i);
+      set_addelem(ZS, i);
   }
-  set_copy(ZS, tempset);
 }
 
 void CopyBmatrix(double (*T)[NMAX], double (*TCOPY)[NMAX])
@@ -476,7 +482,7 @@ void SelectPivot1(double (*X)[NMAX], HyperplaneOrderType roworder,
   rowset rowexcluded;
 
   stop = FALSE;
-  set_initialize(rowexcluded,rowsetsize);
+  set_initialize(&rowexcluded,mm);
   set_copy(rowexcluded,NopivotRow);
   for (rtemp=rowmax+1;rtemp<=mm;rtemp++) {
     set_addelem(rowexcluded,rtemp);   /* cannot pivot on any row > rmax */
@@ -505,6 +511,7 @@ void SelectPivot1(double (*X)[NMAX], HyperplaneOrderType roworder,
       stop = TRUE;
     }
   } while (!stop);
+  set_free(rowexcluded);
 }
 
 double TableauEntry(double (*X)[NMAX], double (*T)[NMAX],
@@ -562,8 +569,12 @@ void SelectPivot2(double (*X)[NMAX], double (*T)[NMAX],
   double Xtemp;
 
   stop = FALSE;
-  set_initialize(rowexcluded,rowsetsize);
+  set_initialize(&rowexcluded,mm);
   set_copy(rowexcluded,NopivotRow);
+  if (debug) {
+    printf("select pivot2: rowexcluded=");
+    set_fwrite(stdout,rowexcluded);
+  }
   for (rtemp=rowmax+1;rtemp<=mm;rtemp++) {
     set_addelem(rowexcluded,rtemp);   /* cannot pivot on any row > rmax */
   }
@@ -600,6 +611,7 @@ void SelectPivot2(double (*X)[NMAX], double (*T)[NMAX],
       stop = TRUE;
     }
   } while (!stop);
+  set_free(rowexcluded);
 }
 
 void GausianColumnPivot1(double (*X)[NMAX], rowrange r, colrange s,
@@ -838,9 +850,9 @@ void ComputeRank(double (*A1)[NMAX], long *TargetRows, long *rank)
   
   *rank = 0;
   stop = FALSE;
-  set_initialize(NoPivotRow, rowsetsize);
+  set_initialize(&NoPivotRow, mm);
   set_compl(NoPivotRow,TargetRows);
-  set_initialize(ColSelected, colsetsize);
+  set_initialize(&ColSelected, nn);
   InitializeBmatrix(Btemp);
   if (debug) WriteBmatrix(stdout,Btemp);
   do {   /* Find a set of rows for a basis */
@@ -859,6 +871,8 @@ void ComputeRank(double (*A1)[NMAX], long *TargetRows, long *rank)
         stop=TRUE;
       }
   } while (!stop);
+  set_free(NoPivotRow);
+  set_free(ColSelected);
 }
 
 void ComputeBInverse(double (*A1)[NMAX], long lastrow,
@@ -873,8 +887,8 @@ void ComputeBInverse(double (*A1)[NMAX], long lastrow,
   *rank = 0;
   stop = FALSE;
   InitializeBmatrix(InvA1);
-  set_initialize(RowSelected, rowsetsize);
-  set_initialize(ColSelected, colsetsize);
+  set_initialize(&RowSelected, mm);
+  set_initialize(&ColSelected, nn);
   do {
     SelectPivot2(A1, InvA1, LeastIndex, lastrow, RowSelected, ColSelected, &r, &s, &chosen);
     if (chosen) {
@@ -887,12 +901,14 @@ void ComputeBInverse(double (*A1)[NMAX], long lastrow,
     } else
       stop = TRUE;
   } while (!stop);
+  set_free(RowSelected);
+  set_free(ColSelected);
 }
 
 
 void FindBasis(double (*A1)[NMAX], 
               HyperplaneOrderType roword, 
-              long *RowSelected,long *ColInd,
+              rowset RowSelected,colset ColInd,
               double (*BasisInverse)[NMAX], long *rank)
 {
   boolean stop, chosen;
@@ -904,8 +920,8 @@ void FindBasis(double (*A1)[NMAX],
   *rank = 0;
   stop = FALSE;
   for (j=0;j<=nn;j++) ColInd[j]=0;
-  set_initialize(RowSelected, rowsetsize);
-  set_initialize(ColSelected, colsetsize);
+  set_emptyset(RowSelected);
+  set_initialize(&ColSelected, nn);
   InitializeBmatrix(BasisInverse);
   if (debug) WriteBmatrix(stdout,BasisInverse);
   do {   /* Find a set of rows for a basis */
@@ -927,6 +943,7 @@ void FindBasis(double (*A1)[NMAX],
       }
       if (*rank==nn) stop = TRUE;
   } while (!stop);
+  set_free(ColSelected);
 }
 
 
@@ -1014,10 +1031,10 @@ void CrissCrossSolve(double (*A1)[NMAX],double (*BasisInverse)[NMAX],
 
   rank = 0;
   stop = FALSE;
-  set_initialize(Cobasis,rowsetsize);
-  set_initialize(Basis,rowsetsize);
-  set_initialize(RowSelected, rowsetsize);
-  set_initialize(ColSelected, colsetsize);
+  set_initialize(&Cobasis,mm);
+  set_initialize(&Basis,mm);
+  set_initialize(&RowSelected, mm);
+  set_initialize(&ColSelected, nn);
   set_addelem(RowSelected, OBJrow);
   set_addelem(ColSelected, RHScol);
   for (i=0; i<=MMAX; i++) BasisFlag[i]=0;
@@ -1120,10 +1137,14 @@ void CrissCrossSolve(double (*A1)[NMAX],double (*BasisInverse)[NMAX],
     }
     break;
   }
+  set_free(ColSelected);
+  set_free(RowSelected);
+  set_free(Basis);
+  set_free(Cobasis);
 }
 
 
-void FindInitialRays(long *InitialHyperplanes,
+void FindInitialRays(rowset InitHyperplanes,
 			    double (*InitRays)[NMAX], boolean *found)
 {
   Bmatrix BInverse;
@@ -1133,7 +1154,8 @@ void FindInitialRays(long *InitialHyperplanes,
   HyperplaneOrderType roworder;
 
   *found = FALSE;
-  set_initialize(CandidateRows, rowsetsize);
+  
+  set_initialize(&CandidateRows, mm);
   switch (HyperplaneOrder) {
   case LargestIndex:
     roworder = LargestIndex;
@@ -1168,13 +1190,17 @@ void FindInitialRays(long *InitialHyperplanes,
     set_addelem(CandidateRows, i);      /*all rows are candidates for initial cone*/
   if (DynamicWriteOn)
     printf("*Computing an initial set of rays\n");
-  FindBasis(AA, roworder, InitialHyperplanes, PivRow, BInverse, &rank);
+  FindBasis(AA, roworder, InitHyperplanes, PivRow, BInverse, &rank);
+  if (debug) {
+    printf("FindInitialBasis: InitHyperplanes=");
+    set_fwrite(stdout,InitHyperplanes);
+  }
   if (debug) printf("nn = %ld, rank = %ld\n",nn,rank);
   if (rank < nn) {
     Error = LowColumnRank;
     return;
   }
-  if (!set_subset(MarkedSet,InitialHyperplanes)) {
+  if (!set_subset(MarkedSet,InitHyperplanes)) {
     Error = DependentMarkedSet;
     return;
   }
@@ -1183,8 +1209,8 @@ void FindInitialRays(long *InitialHyperplanes,
     WriteBmatrix(stdout, BInverse);
   }
   CopyBmatrix(BInverse,InitRays);
-  if (debug) 
-    WriteBmatrix(stdout, InitRays);
+  if (debug) WriteBmatrix(stdout, InitRays);
+  set_free(CandidateRows);
 }
 
 void CheckEquality(RayRecord **RP1, RayRecord **RP2, boolean *equal)

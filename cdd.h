@@ -1,6 +1,6 @@
 /* cdd.h: Header file for cdd.c 
    written by Komei Fukuda, fukuda@dma.epfl.ch
-   Version 0.33, Jan. 16, 1994 
+   Version 0.36, Jan. 23, 1994 
 */
 
 /* cdd.c : C-Implementation of the double description method for
@@ -15,8 +15,8 @@
 typedef char boolean;
 typedef long rowrange;
 typedef long colrange;
-typedef long rowset[rowsetblocks];
-typedef long colset[colsetblocks];
+typedef set_type rowset;  /* set_type defined in setoper.h */
+typedef set_type colset;
 typedef long rowindex[MMAX+1];
 typedef long colindex[NMAX+1];
 typedef double Amatrix[MMAX][NMAX];
@@ -25,7 +25,7 @@ typedef double Bmatrix[NMAX][NMAX];
 typedef char DataFileType[filenamelen];
 
 typedef struct RayRecord {
-  Arow Ray;
+  double *Ray;
   rowset ZeroSet;
   double ARay;   /*temporary area to store some row of A*Ray*/
   struct RayRecord *Next;
@@ -52,8 +52,11 @@ typedef enum {
   IneToExt, ExtToIne, Projection, LPmax, LPmin
 } ConversionType;
 typedef enum {
-  IncOff, IncCardinality, IncSet
+  IncOff=0, IncCardinality, IncSet
 } IncidenceOutputType;
+typedef enum {
+  AdjOff=0, OutputAdjacency, InputAdjacency, IOAdjacency
+} AdjacencyOutputType;
 typedef enum {
   DimensionTooLarge, LowColumnRank, ImproperInputFormat, DependentMarkedSet, None
 } ErrorType;
@@ -74,7 +77,7 @@ extern colrange RHScol;
 extern long projdim;  /*dimension of orthogonal preprojection */
 extern colset projvars;   /*set of variables spanning the space of preprojection, 
      i.e. the remaining variables are to be removed*/
-extern rowset MarkedSet, GroundSet;
+extern rowset MarkedSet, GroundSet, Face, Face1;
 extern rowrange Iteration, hh;
 extern rowset AddedHyperplanes, InitialHyperplanes;
 extern long RayCount, FeasibleRayCount, TotalRayCount, VertexCount;
@@ -94,9 +97,10 @@ extern boolean PartialEnumeration; /* Partial enumeration Switch (TRUE if it is 
 extern CompStatusType CompStatus;     /* Computation Status */
 extern ConversionType Conversion;
 extern IncidenceOutputType IncidenceOutput;
+extern AdjacencyOutputType AdjacencyOutput;
 extern ErrorType Error;
-extern DataFileType inputfile,outputfile,icdfile,logfile;
-extern FILE *reading, *writing, *writing_icd, *writing_log;
+extern DataFileType inputfile,outputfile,icdfile,adjfile,logfile;
+extern FILE *reading, *writing, *writing_icd,*writing_adj, *writing_log;
 extern time_t starttime, endtime;
 
 void SetInputFile(FILE **);
@@ -155,6 +159,7 @@ boolean LexLarger(double *, double *);
 void CopyArow(double *, double *);
 void SelectNextHyperplane(HyperplaneOrderType,long *, rowrange *);
 void AddNewHyperplane(rowrange);
+void WriteAdjacency(FILE *);
 void WriteRunningMode(FILE *);
 void WriteCompletionStatus(FILE *);
 void WriteTimes(FILE *);
