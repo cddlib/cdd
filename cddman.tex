@@ -1,7 +1,7 @@
 % The name of this file: cddman.tex
 % written by by Komei Fukuda
 % December 14, 1993
-% Revised March 15, 1994
+% Revised March 28, 1994
 %
 \documentstyle[11pt]{article}
 \renewcommand{\baselinestretch}{1.0}
@@ -38,7 +38,7 @@
 }
 
 \vspace{20mm}
-{\Large (cdd Version 0.51c,  March 15, 1994)}
+{\Large (cdd Version 0.52a,  March 28, 1994)}
 
 \end{center}
 
@@ -57,7 +57,7 @@
    University of Tsukuba, Tokyo, Japan}
 
 \bigskip
-{\large (cdd Version 0.51c,  March 15, 1994)}
+{\large (cdd Version 0.52a,  March 28, 1994)}
 
 \end{center}
 
@@ -65,8 +65,8 @@
 
 The program  cdd.c  is a C implementation of 
 the Double Description Method~\cite{MRTT}
-for generating all vertices (i.e. extremal points)
-and extremal rays of a general 
+for generating all vertices (i.e. extreme points)
+and extreme rays of a general 
 convex polyhedron given by a system of linear inequalities:
 \[
    P = \{ x  \in R^d:  A  x  \le  b \}
@@ -118,7 +118,7 @@ for hull computation: the polyhedron must be full-dimensional.
 
 Among the hardest problems that could be
 solved by cdd is a 21-dimensional hull problem given by 63 
-extremal rays. This polyhedral cone, known as the {\em complete
+extreme rays. This polyhedral cone, known as the {\em complete
 cut cone on 7 points\/}, has exactly 38,780 facets and
 some of facets contain many rays, see e.g. \cite{G}. 
 It took a couple of days for an earliear version of cdd
@@ -203,7 +203,7 @@ Polyhedra output format is quite similar to input format:
 \bigskip
 \noindent
 where $v_1, \ldots, v_n$ are the vertices and
-$r_1, \ldots, r_s$ are the extremal rays of the
+$r_1, \ldots, r_s$ are the extreme rays of the
 polyhedron $P$.  Here we do not require that
 the vertex list and the ray list are output
 separately; they can appear mixed in arbitrary
@@ -217,7 +217,7 @@ polyhedron given by
     1\le x_1 \le 2, \; 1 \le x_2 \le 2, \; 1 \le x_3\},
 \]
 which is a 3-cube without one ^^ ^^ lid". For finding all
-vertices and extremal rays, the input file for cdd is
+vertices and extreme rays, the input file for cdd is
 
 \begin{verbatim}
 file name: ucube.ine
@@ -264,7 +264,7 @@ end
 
 The output shows that the polyhedron has four vertices
 $(2,1,1)$, $(1,1,1)$, $(1,2,1)$, $(2,2,1)$ and
-only one extremal ray $(0,0,1)$.  The comments contain
+only one extreme ray $(0,0,1)$.  The comments contain
 information on the name of input file, and the options
 chosen to run the program which will be explained in
 the next section.
@@ -331,7 +331,7 @@ When the {\bf incidence} option is selected, the incidence relations between
 the vertices/rays and the inequalities will be output
 in a separate file (*.icd).  Here, a vertex is said to be 
 {\em incident with\/} an inequality if the inequality is satisfied by equality.
-An extremal ray $r$ is said to be {\em incident with\/} 
+An extreme ray $r$ is said to be {\em incident with\/} 
 an inequality $a^T \; x \le b$ if  $a^T \; r = 0$.  For example,
 since the incidence option was set for the example input file ucube.ine in
 the previous section, the program outputs the following ucube.icd file:
@@ -532,25 +532,32 @@ See the input file ^^ ^^ partialtest.ine".
 
 \item[preprojection] option\\
 This option is for a preprocessing
- of orthogonal projection of the polyhedon to a subset of variables.  
-That is, if the inequality inequality system is of two-block form  $A1 x1 + A2 x2 \le b$, 
-and the variable indices for $x2$, say $1, 4, 6, 7$,
+of orthogonal projection of the polyhedon to the subspace of
+$R^d$ spanned by a subset of variables.  
+That is, if the inequality inequality system is 
+of two-block form  $A_1 x_1 + A_2 x_2 \le b$, 
+and the variable indices for $x_1$, say $1, 4, 6, 7$,
 are listed in the input file as
 \begin{verbatim}
 begin
   m   d+1   numbertype
-  b   -A1  -A2
+  b   -A
 end
 preprojection
   4  1  4  6  7
 \end{verbatim}
     
-Then, cdd will output the inequality system,  $A1 x1  \le b$, together with the list $R$ of extremal
-rays of the homogeneous cone  $\{z:  z  \ge 0  \mbox{ and }  z A2 = 0 \}$.  
+Then, cdd will output the inequality system,
+$A_1 x_1  \le b$, together with the list $R$ of extreme
+rays of the homogeneous cone  $\{z:  z  \ge 0  \mbox{ and }  z^T A_2 = 0 \}$.  
 Consequently, the inequality system
-$\{ \quad r A1  x1  \le  r b : \quad r \in  R \}$
+$\{ \quad r^T A_1  x_1  \le  r^T b : \quad r \in  R \}$
 represents the projection of the original polyhedron onto
-x1-space with possible redundancy.   There is a supplementary  C program, 
+$x_1$-space with possible redundancy.  The default file names
+for the inequality system output and the extemal ray output are
+*sub.ine and *.ext, respectively if the input file is named *.ine.  
+
+There is a supplementary  C program, 
 written by F. Margot, EPFL, which generates quickly a minimal
 (i.e. nonredundant) system from these two outputs.
 We are now preparing to distribute this program with cdd.
@@ -569,7 +576,7 @@ The simplest way is just to run the program with
 and then the program will open necessary output files with
 default file names, and output the requested results.
 The default names are {\em test.ext\/}, {\em test.icd\/}, {\em test.adj\/},
-{\em testsub.ine\/} for the extremal points/ray file, the incidence
+{\em testsub.ine\/} for the extreme points/ray file, the incidence
 file, the adjacency file and the preprojection variable sub-inequality
 system, respectively.  If you want to specify the output file names
 different from default, simply run the program by
@@ -599,13 +606,14 @@ and input desired file names at each of file name requests.
 \end{tabular}
 
 \noindent
-To compile the code in standard unix environment, type
+To compile the code in a standard unix environment, type
 \begin{verbatim}
   cc -O cdd.c cddarith.c setoper.c
 \end{verbatim}
 
 to obtain an optimized executable file a.out. The GNU compiler
-gcc can replace cc above.
+gcc can replace cc above, and it is perhaps a better choice since
+some C  compilers do not support ANSI C.
 Since the program includes some standard ANSI library 
 headers such as stdlib.h and time.h at compilation, 
 the compiler must know the locations of the standard ANSI libraries.
@@ -637,11 +645,21 @@ personal computers without any changes if one uses a compliler supporting
 ANSI standard. We have verified that it can be compiled by THINK C without
 any problems if ANSI library is added to the project together with
 cdd.c, cddarith.c and setoper.c.  We have not yet tried to compile it with TURBO C.
+\end{itemize}
 
-\item[(4)] [Rational Input Not Supported] The present cdd.c does not
+\section{Bugs}  \label{BUGS}
+\begin{itemize}
+
+\item When the input system is a homogeneous system of linear inequalities
+(i.e. the right hand side vector $b$ is a zero vector) and the homogeneous
+cone determined by the system is pointed (i.e. the origin is a vertex) , 
+the program cdd does not output this unique vertex.
+
+\item The present cdd.c does not
 read any RATIONAL numbers ($a/b$ type with $a$, $b$ integers).
 
 \end{itemize}
+
 
 \section{FTP site}  \label{FTP}
 An anonymous ftp site for the programs is set at EPFL:
@@ -667,6 +685,9 @@ of EPFL who used earlier versions of the program extensively,
 found several bugs, and  gave me very helpful suggestions.
 I am thankful to Dr. Henry Crapo of INRIA, France for
 his precious advise on the input and output style of Polyhedra format.
+I would like to thank Dr. Alexander Bockmayr
+of Max Planck Institute, Germany for having used the program and
+reported several bugs of cdd.
 
 \addtolength{\baselineskip}{-0.5\baselineskip}
 \begin{thebibliography}{99}

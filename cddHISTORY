@@ -144,4 +144,21 @@ Version C0.51c (March 15, 1994) /
    is fixed. This bug was reported by Alexander Bockmayr of
    Max-Planck Institute.
 
+Version C0.52 (March 21, 1994) /
+ - A bug of Version C0.51c generating segmentation fault when the option
+   preprojection is used is fixed. This bug was reported by Alexander Bockmayr of
+   Max-Planck Institute.
+ - Some structural changes in the programs, cdd.c and cddarith.c, have been made
+   mainly for a future planning of adding an option to decompose a problem into 
+   smaller subproblems.
+
+Version C0.52a (March 28, 1994) /
+ - A bug of Version C0.52 generating unnecessary information when
+   maximize, minimize and find_interior are chosen is fixed.
+
+Version C0.51d (March 28, 1994) /
+ - Because of the slowness of Version 0.52* due to unknown reasons, this version
+   has been produced for a temporary replacement.  This version fixes the bug
+   mentioned in Version C0.52 release.
+ 
 --- end of file: cddHISTORY ---

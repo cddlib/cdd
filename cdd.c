@@ -1,5 +1,5 @@
 #define COPYRIGHT   "Copyright (C) 1994, Komei Fukuda, fukuda@dma.epfl.ch"
-#define DDVERSION   "Version C0.51c (March 15, 1994)"
+#define DDVERSION   "Version C0.51d (March 28, 1994)"
 
 /*  This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -1031,16 +1031,13 @@ void WriteProjRayRecord(FILE *f, RayRecord *RR, long *dbrow)
   long i,j,k;
   static double *vec;
   static rowset dbset;
-  static long mprev=0, nprev=0;
+  static long mprev=0;
 
   if (dbset==NULL || mprev<mm){
      set_initialize(&dbset,mm);  
+     vec=(double *)calloc(mm, sizeof *vec);
      /* initialize only for the first time or when a larger space is needed */
      mprev=mm;
-  }
-  if (vec==NULL || nprev<nn) {
-    vec=(double *)calloc(nn, sizeof *vec);
-    nprev=nn;
   }
   for (j = 1; j <= mm-nn; j++){
     i=dbrow[j];
