@@ -1,26 +1,27 @@
 /* setoper.c:
  * A set operation library 
  * created by Komei Fukuda, Nov.14, 1993
- * modified on Feb. 17, 1994 
+ * modified on December 5, 1994 
+   (set_card function replaced with a better code by David Bremner) 
  */
 
 #include "setoper.h"
 
 long set_blocks(long len)
 {
-	long blocks;
+	unsigned long blocks;
 	
 	blocks=(len-1)/SETBITS+2;
 	return blocks;
 }
 
-void set_initialize(set_type *setp,long len)
+void set_initialize(set_type *setp, long len)
 /* Make a set with a given bit lengths  */
 {
 	long i,forlim1;
 	
 	forlim1=set_blocks(len);
-	*setp=(long *) calloc(forlim1, sizeof i);
+	*setp=(unsigned long *) calloc(forlim1, sizeof i);
 	(*setp)[0]=len;  /* size of the ground set */
 	for (i=1; i<forlim1; i++)
 		(*setp)[i]=0;
@@ -58,7 +59,7 @@ void set_addelem(set_type set, long elem)
 {
 	long i,j;
 	long change;
-	unsigned long one=1;
+	long one=1;
 	
 	if (elem<=set[0])    
 	{
@@ -158,7 +159,21 @@ int set_member(long elem, set_type set)
 }
 
 long set_card(set_type set)
-/* set cardinality  */
+/* set cardinality, modified by David Bremner bremner@cs.mcgill.ca
+   to optimize for speed. */
+{
+  unsigned long block,car=0;
+  set_card_lut_t *p;
+  
+  p=(set_card_lut_t *)&set[1];
+  for (block=0; block< LUTBLOCKS(set);block++) {
+    car+=set_card_lut[p[block]];
+  }
+  return car;
+}
+
+/* old cardinality code 
+long set_card(set_type set)
 {
 	long elem,car=0;
 	
@@ -167,6 +182,7 @@ long set_card(set_type set)
     }
 	return car;
 }
+*/ 
 
 void set_write(set_type set)
 {
@@ -206,7 +222,7 @@ void set_binwrite(set_type set)
 		for (j=SETBITS-1;j>=0;j--)
 		{
 			e1=(e1>>j);
-			printf("%ld",e1);
+			printf("%1ld",e1);
 			e1=e2-(e1<<j);
 			e2=e1;
 		}
@@ -230,7 +246,7 @@ void set_fbinwrite(FILE *f,set_type set)
 		for (j=SETBITS-1;j>=0;j--)
 		{
 			e1=(e1>>j);
-			fprintf(f,"%ld",e1);
+			fprintf(f,"%1ld",e1);
 			e1=e2-(e1<<j);
 			e2=e1;
 		}
@@ -240,4 +256,3 @@ void set_fbinwrite(FILE *f,set_type set)
 }
 
 /* End of the library:  setoper.c  */
-

@@ -128,7 +128,7 @@ Version C0.51 (Feb. 12, 1994) /
    is almost always faster.
  - The option "minimize" is implemented to minimize a linear function over
    the polytope.  Previously, only "maximize" was supported.
- - The option "find_interior" has been added to compute an interior point
+ - The option "find_interior" has been added to compute an interior point of
    the input polyhedron.
 
 Version C0.51a (Feb. 16, 1994) /
@@ -171,5 +171,25 @@ Version C0.53 (July 29, 1994) /
    inequality data.  Anything written after the last number will be ignored.  
    Also, random ordering option is added for specifying the ordering of
    rows (inequalities). 
+
+Version C0.54 (October 30, 1994) /
+   The partial_enumeration option is renamed as "equality" option.
+   A new option of "strict_inequality" is added to enumerate those 
+   vertices/rays satisfying some specified inequalities with strict 
+   inequality. Some bugs in reporting progress of iteration is fixed.
+
+Version C0.55 (December 5, 1994) /
+   Set operation library setoper has been modified to use
+   the optimized set_card function by David Bremner.  It is expected
+   that cdd runs much faster for problems with large row sizes. 
+   The package organization has been changed.  Now the package
+   consists of four C-programs, cdd.c, cddio.c, cddarith.c and setoper.c.
+   New options verify_input, equality and strict_inequality are added.
+   Also new options, lineshelling and row_decomposition are added but
+   these options are still not in very reliable form and not
+   recommended to use.  Some newly found (minor) bugs are fixed.
+
+Version C0.55a (December 18, 1994) /
+   The broken "preprojection" option in Version 0.55a is fixed.
 
 --- end of file: cddHISTORY ---

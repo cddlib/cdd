@@ -1,4 +1,4 @@
-6 dimensional hypercube
+Hypercube of dimension 6
 begin
     12    7    integer
  0  1  0  0  0  0  0
@@ -16,4 +16,5 @@ begin
 end
 incidence 
 adjacency
-
+stdout_off
+logfile_on

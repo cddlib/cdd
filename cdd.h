@@ -1,6 +1,6 @@
 /* cdd.h: Header file for cdd.c 
    written by Komei Fukuda, fukuda@dma.epfl.ch
-   Version 0.53, July 29, 1994 
+   Version 0.55a, December 18, 1994 
 */
 
 /* cdd.c : C-Implementation of the double description method for
@@ -10,6 +10,8 @@
    the manual cddman.tex for detail.
 */
 
+#define COPYRIGHT   "Copyright (C) 1994, Komei Fukuda, fukuda@dma.epfl.ch"
+#define DDVERSION   "Version C0.55a (December 18, 1994)"
 #include <time.h>
 
 typedef char boolean;
@@ -18,7 +20,7 @@ typedef long colrange;
 typedef set_type rowset;  /* set_type defined in setoper.h */
 typedef set_type colset;
 typedef long *rowindex;   
-    /* rowindex should be intialized to be an array of [MMAX+1] components */
+    /* rowindex should be intialized to be an array of [mm+1] components */
 typedef long colindex[NMAX+1];
 typedef double *Amatrix[MMAX];
 typedef double Arow[NMAX];
@@ -46,35 +48,46 @@ typedef struct node {long key; struct node *next;} node;
 typedef enum {
   Combinatorial, Algebraic
 } AdjacencyTestType;
+
 typedef enum {
-  MaxIndex, MinIndex, MinCutoff, MaxCutoff, MixCutoff, LexMin, LexMax, RandomRow
+  MaxIndex, MinIndex, MinCutoff, MaxCutoff, MixCutoff,
+   LexMin, LexMax, RandomRow, LineShelling
 } HyperplaneOrderType;
+
 typedef enum {
   Real, Rational, Integer, Unknown
 } NumberType;
+
 typedef enum {
   ZeroRHS, NonzeroRHS
 } InequalityType;
+
 typedef enum {
   IneToExt, ExtToIne, Projection, LPmax, LPmin, InteriorFind
 } ConversionType;
+
 typedef enum {
   IncOff=0, IncCardinality, IncSet
 } IncidenceOutputType;
+
 typedef enum {
   AdjOff=0, OutputAdjacency, InputAdjacency, IOAdjacency
 } AdjacencyOutputType;
+
 typedef enum {
   Auto, SemiAuto, Manual
 } FileInputModeType;   
    /* Auto if a input filename is specified by command arguments */
+
 typedef enum {
   DimensionTooLarge, LowColumnRank, ImproperInputFormat, DependentMarkedSet, 
   FileNotFound, None
 } ErrorType;
+
 typedef enum {
   InProgress, AllFound, RegionEmpty
 } CompStatusType;
+
 typedef enum {
   LPSundecided, Optimal, Inconsistent, DualInconsistent, Unbounded, DualUnbounded
 } LPStatusType;
@@ -84,16 +97,19 @@ extern long mm, nn;   /*size of the homogenous system to be solved by dd*/
 extern long projdim;  /*dimension of orthogonal preprojection */
 extern colset projvars;   /*set of variables spanning the space of preprojection, 
      i.e. the remaining variables are to be removed*/
-extern rowset MarkedSet, GroundSet, Face, Face1;
+extern rowset EqualitySet, NonequalitySet, GroundSet, Face, Face1;
 extern rowrange Iteration, hh;
 extern rowindex OrderVector;
-extern rowset AddedHyperplanes, InitialHyperplanes;
-extern long RayCount, FeasibleRayCount, TotalRayCount, VertexCount,ZeroRayCount;
+extern rowindex EqualityIndex;  
+extern rowset AddedHyperplanes, WeaklyAddedHyperplanes, InitialHyperplanes;
+extern long RayCount, FeasibleRayCount, WeaklyFeasibleRayCount,
+ TotalRayCount, VertexCount,ZeroRayCount;
 extern long EdgeCount,TotalEdgeCount;
 extern long count_int,count_int_good,count_int_bad;
 extern boolean DynamicWriteOn, DynamicRayWriteOn, LogWriteOn, debug;
 extern Amatrix AA;
 extern Bmatrix InitialRays;
+extern colindex InitialRayIndex;
 extern LPStatusType LPStatus;
 extern colrange RHScol;   /* LP RHS column */
 extern rowrange OBJrow;   /* LP OBJ row */
@@ -108,7 +124,10 @@ extern NumberType Number;
 extern InequalityType Inequality;
 extern boolean NondegAssumed;   /* Nondegeneacy preknowledge flag */
 extern boolean InitBasisAtBottom;  /* if it is on, the initial Basis will be selected at bottom */
-extern boolean PartialEnumeration; /* Partial enumeration Switch (TRUE if it is restricted on the intersection of MarkedSet hyperplanes) */
+extern boolean RestrictedEnumeration; /* Restricted enumeration Switch (TRUE if it is restricted on the intersection of EqualitySet hyperplanes) */
+extern boolean RelaxedEnumeration; /* Relaxed enumeration Switch (TRUE if NonequalitySet inequalities must be satisfied with strict inequality) */
+extern boolean RowDecomposition; /* Row decomposition enumeration Switch */
+extern boolean VerifyInput; /* Verification switch for the input data */
 extern boolean PreOrderedRun; 
 extern boolean QPivotOn; /* QPivot Switch (TRUE if Q-Pivot scheme of Jack Edmonds is chosen) */
 extern CompStatusType CompStatus;     /* Computation Status */
@@ -118,9 +137,9 @@ extern AdjacencyOutputType AdjacencyOutput;
 extern ErrorType Error;
 extern FileInputModeType FileInputMode;
 extern DataFileType inputfile,ifilehead,ifiletail,
-     outputfile,projfile, icdfile,adjfile,logfile;
-
-extern FILE *reading, *writing, *writing_icd,*writing_adj, *writing_log;
+     outputfile,projfile, icdfile,adjfile,logfile,dexfile,verfile;
+extern FILE *reading, *writing, *writing_icd,
+     *writing_adj, *writing_log, *writing_dex, *writing_ver, *reading_dex;
 extern time_t starttime, endtime;
 extern unsigned int rseed;
 
@@ -132,15 +151,16 @@ void SetWriteFile(FILE **, DataFileType, char, char *);
 void SetNumberType(char *);
 void ProcessCommandLine(char *);
 void AmatrixInput(boolean *);
+void SetInequalitySets(rowindex);
 
-long Cardinality(long *);
 void WriteReal(FILE *, double);
 void WriteSetElements(FILE *, long *);
 void WriteRayRecord(FILE *, RayRecord *);
 void WriteRayRecord2(FILE *, RayRecord *);
 double AValue(double *, rowrange );
 void WriteIncidence(FILE *, RayRecord *);
-void StoreRay(double *, RayRecord *, boolean *);
+void StoreRay1(double *, RayRecord *, boolean *);
+void StoreRay2(double *, RayRecord *, boolean *, boolean *);
 void AddRay(double *);
 void AddArtificialRay(void);
 void ConditionalAddEdge(RayRecord *Ray1, RayRecord *Ray2, RayRecord *ValidFirstRay);
@@ -185,8 +205,7 @@ void CrissCrossMaximize(Amatrix,Bmatrix BasisInverse,
   rowrange *, colrange *, long *);
 void WriteLPResult(FILE *, LPStatusType, double, 
   Arow, Arow, colindex, rowrange, colrange, long);
-void FindInitialRays(rowset InitHyperplanes,
-			    Bmatrix InitRays, boolean *found);
+void FindInitialRays(rowset, Bmatrix, colindex, boolean *);
 void CheckAdjacency1(RayRecord **, RayRecord **,boolean *);
 void CheckAdjacency2(RayRecord **, RayRecord **,boolean *);
 void CheckEquality(RayRecord **, RayRecord **, boolean *);
@@ -195,9 +214,9 @@ void CreateNewRay(RayRecord *, RayRecord *, rowrange);
 void EvaluateARay1(rowrange);
 void EvaluateARay2(rowrange);
 void FeasibilityIndices(long *, long *, rowrange);
-boolean LexSmaller(double *, double *);
-boolean LexLarger(double *, double *);
-void CopyArow(double *, double *);
+boolean LexSmaller(double *, double *, long);
+boolean LexLarger(double *, double *, long);
+void CopyArow(double *, double *, long);
 void ComputeRowOrderVector(rowindex OV, HyperplaneOrderType ho);
 void UpdateRowOrderVector(rowset PriorityRows);
 void SelectNextHyperplane(HyperplaneOrderType,long *, rowrange *, boolean *);
@@ -206,7 +225,11 @@ void AddNewHyperplane1(rowrange);
 void AddNewHyperplane2(rowrange);
 void WriteAdjacency(FILE *);
 void WriteRunningMode(FILE *);
+void WriteRunningMode2(FILE *);
 void WriteCompletionStatus(FILE *);
 void WriteTimes(FILE *);
+void WriteProgramDescription(FILE *f);
+void WriteSolvedProblem(FILE *f);
+
 
 /* end of cdd.h */

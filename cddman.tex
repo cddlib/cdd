@@ -1,13 +1,13 @@
 % The name of this file: cddman.tex
 % written by by Komei Fukuda
 % December 14, 1993
-% Revised October 2, 1994
+% Revised December 18, 1994
 %
 \documentstyle[11pt]{article}
 \renewcommand{\baselinestretch}{1.0}
 \setlength{\oddsidemargin}{8mm}
 \setlength{\textwidth}{16cm}
-\setlength{\topmargin}{10mm}
+\setlength{\topmargin}{0mm}
 \setlength{\textheight}{23cm}
 \setlength{\headsep}{0in}
 \setlength{\headheight}{0pt}
@@ -19,9 +19,6 @@
 .\vspace{20mm}
 
 \begin{center}
-
-% {\LARGE RO931123}
-
 
 \vspace{20mm}
 
@@ -38,9 +35,9 @@
 }
 
 \vspace{20mm}
-{\Large (cdd Version 0.53,  July 29, 1994)}
+{\Large (cdd Version 0.55a,  December 18, 1994)}
 
-{\Large (Manual  Version  October 2, 1994)}
+{\Large (Manual  Version  December 18, 1994)}
 
 \end{center}
 
@@ -59,7 +56,7 @@
    University of Tsukuba, Tokyo, Japan}
 
 \bigskip
-{\large (cdd Version 0.53,  July 29, 1994)}
+{\large (cdd Version 0.55a,  December 18, 1994)}
 
 \end{center}
 
@@ -74,9 +71,7 @@ convex polyhedron given by a system of linear inequalities:
    P = \{ x  \in R^d:  A  x  \le  b \}
 \]
 where $A$ is an $m \times d$ real matrix and $b$ is a real
-$m$ dimensional vector.  It is intended that the program works 
-only when the input polyhedron has at least one vertex.  But  it 
-works for polyhedra $P$ which are not full-dimensional.    
+$m$ dimensional vector.
 
 One useful feature of cdd is its capability
 of handling the dual (reverse)  problem without any transformation
@@ -124,7 +119,7 @@ solved by cdd is a 21-dimensional hull problem given by 64
 vertices. This polytope, known as the {\em complete
 cut polytope on 7 points\/}, has exactly 116,764 facets
 and some of facets contain many vertices. 
-It took about 205 hours (eight and half days!) for cdd
+It took 205 hours (eight and half days!) for cdd
 to compute the facets exactly on a SUN SparkServer 1000.
 The input file (ccp7.ine) of this polytope is
 included in the distribution.  A considerably easier
@@ -135,17 +130,18 @@ The size of an input file hardly indicates the degree of
 hardness of its vertex/ray enumeration.  While this program
 can handle a highly degenerate problem (prodmT5.ine) with 
 711 inequalities in  19 dimension quite easily with
-the computation time 1-2 minutes on a fast workstation, 
+the computation time 30 seconds on a fast workstation, 
 a 8-dimensional problem (mit729-9.ine) with 729 inequalities
-can be extremely hard.  It takes two days to compute all
-(only 4862) vertices by a fast SUN SparkServer 1000.  The latter problem arises
+can be quite hard.  It takes about two hours to compute all
+(only 4862) vertices on the same workstation (SparkServer 1000).
+The latter problem arises
 from the ground state analysis of a ternary alloy model, see \cite{CGAF}.
 Both input files are included in the distribution.  
 
 Although the program can be used for nondegenerate inputs,
 it might not be very efficient.  For nondegenerate inputs, 
-the use of the reverse search code rs is strongly
-recommended.
+other available programs, such as the reverse search code rs,
+might be more efficient.
 
 One serious drawback of the current cdd is that the computation
 is done with floating point arithmetic, and it does
@@ -243,14 +239,14 @@ After you run cdd with this input file, you will get
 an output file, say ucube.ext, which looks like:
 
 \begin{verbatim}
-* cdd: Double Description Method C-Code:Version C0.51 (February 12, 1994)
+* cdd: Double Description Method C-Code:Version C0.55 (December 5, 1994)
 * Copyright (C) 1994, Komei Fukuda, fukuda@dma.epfl.ch
 *Input File:ucube.ine   (   5  x    4)
 *HyperplaneOrder: LexMin
 *Degeneracy preknowledge for computation: None (possible degeneracy)
 *Vertex/Ray enumeration is chosen.
-*Computation starts     at Mon Feb 14 16:13:27 1994
-*            terminates at Mon Feb 14 16:13:27 1994
+*Computation starts     at Sat Dec  5 14:44:01 1994
+*            terminates at Sat Dec  5 14:44:01 1994
 *Total processor time = 0 seconds
 *                     = 0 hour 0 min 0 sec
 *FINAL RESULT:
@@ -263,6 +259,7 @@ begin
   1  2  2  1
   0  0  0  1
 end
+hull
 \end{verbatim}
 
 The output shows that the polyhedron has four vertices
@@ -270,9 +267,16 @@ $(2,1,1)$, $(1,1,1)$, $(1,2,1)$, $(2,2,1)$ and
 only one extreme ray $(0,0,1)$.  The comments contain
 information on the name of input file, and the options
 chosen to run the program which will be explained in
-the next section.
+the next section.  
 
-\newpage
+Finally the ^^ ^^ hull" option is  set for
+the output file so that if you run cdd with this output file,
+cdd will perform the convex hull operation to recover 
+essentially the original input inequality system.  Note that
+this back-and-forth transformation of a polyhedron works
+only when the polyhedron is full dimensional and contans
+at least one vertex.
+
 \section{Options}  \label{OPTIONS}
 
 The following options are available for cdd.  These options are
@@ -312,6 +316,14 @@ Then the input is interpreted as the polyhedron in $R^d$:\\
 $P = conv(v_1,\ldots,v_n) +  nonneg(r_1,\ldots,r_s)$ 
 and the output will be a minimal system of linear inequalities
 to represent $P$. 
+
+\item[verify\_input] option\\
+When this option is chosen, the program will
+output the input problem as cdd interpreted.  
+The default output  file is ^^ ^^ *.solved". 
+This option helps user to verify what problem
+is actually solved.  The default for this option is off.
+See the sample files verifyinput1.ine and verifyinput2.ine
 
 \item[dynout\_off] option\\
 When this option is chosen, the program will
@@ -442,7 +454,6 @@ Unfortunately, a good ordering depends on the problem and there does not seem
 to be THE BEST ordering for every computation.  From our experiences,
 lexmin, lexmax, mincutoff, maxcuoff work quite well in general.
 
-
 The default is lexmin ordering which simply order inequalities
 with respect to lexico-graphic ordering of rows of $(b, -A)$.  The lexmax
 is reverse of lexmin.  The mincutoff (maxcutoff) option selects an inequality which
@@ -477,7 +488,7 @@ is not applicable, i.e. when one of mincutoff or maxcutoff
 options is chosen. In such cases, {\bf lexmin\/}
 ordering will be chosen.
 
-\item[maximize, minimize] option\\
+\item[maximize, minimize] options\\
 When maximize option is set with an objective vector 
 $c_0\: c_1 \: c_2 \ldots c_d$, the program
 simply solves the linear program: $\max c_0 + c_1 x_1 + c_2 x_2 +\cdots + c_d x_d$
@@ -515,8 +526,9 @@ interior point in this last case, one must add some inequality(ies)
 to bound the polyhedron. 
 
 
-\item[partial\_enumeration] option\\
-With this option, one can enumerate only those
+\item[partial\_enumeration, equality, strict\_inequality] options\\
+With partial\_enumeration option (or equivalently equality option), 
+one can enumerate only those
 vertices and rays that are lying on the set of hyperplanes
 associated with specified inequality numbers. If you want
 to compute all vertices/rays lying on hyperplanes
@@ -536,8 +548,13 @@ the option should be specified as
 \\
 \end{tabular}
 
+The {\bf strict\_inequality\/}  option follows the same 
+grammer as partial\_enumeration or equality.  
+With this, cdd outputs only those vertices and rays not satisfying
+any of the specified inequalities with equality.  See the sample files, 
+partialtest1.ine and partialtest2.ine. 
 
-See the input file ^^ ^^ partialtest.ine".
+These options make no effect on LP maximization or minimization.
 
 \item[preprojection] option\\
 This option is for a preprocessing
@@ -547,14 +564,17 @@ That is, if the inequality inequality system is
 of two-block form  $A_1 x_1 + A_2 x_2 \le b$, 
 and the variable indices for $x_1$, say $1, 4, 6, 7$,
 are listed in the input file as
-\begin{verbatim}
-begin
-  m   d+1   numbertype
-  b   -A
-end
-preprojection
-  4  1  4  6  7
-\end{verbatim}
+
+\begin{tabular}{ccl}
+\\ \hline
+\multicolumn{3}{l} {\bf begin}\\
+  $m$  & $d+1$  & {\bf numbertype}\\
+  $b$  & $-A$   &\\
+\multicolumn{3}{l} {\bf end}\\
+\multicolumn{3}{l} {preprojection} \\ 
+\multicolumn{3}{l} { $4 \quad 1 \quad 4 \quad 6 \quad7$ } \\ \hline
+\\
+\end{tabular}
     
 Then, cdd will output the inequality system,
 $A_1 x_1  \le b$, together with the list $R$ of extreme
@@ -584,8 +604,9 @@ The simplest way is just to run the program with
 \end{verbatim}
 and then the program will open necessary output files with
 default file names, and output the requested results.
-The default names are {\em test.ext\/}, {\em test.icd\/}, {\em test.adj\/},
-{\em testsub.ine\/} for the extreme points/ray file, the incidence
+The default names are {\em test.ext\/}, {\em test.solved\/}, {\em test.icd\/}, {\em test.adj\/},
+{\em testsub.ine\/} for the extreme points/ray file, 
+the input verification file, the incidence
 file, the adjacency file and the preprojection variable sub-inequality
 system, respectively.  If you want to specify the output file names
 different from default, simply run the program by
@@ -593,6 +614,9 @@ different from default, simply run the program by
   % cdd
 \end{verbatim}
 and input desired file names at each of file name requests.
+Even after you run cdd this way, one can 
+change to the automatic mode by inputing the input file 
+name with additional semicolon, e.g. ^^ ^^ test.ine;".
 
 \section{Source Files and Compilation}  \label{CAUTIONS}
 
@@ -600,14 +624,15 @@ and input desired file names at each of file name requests.
 \item[(1)] [Files and Compilation] The source files for distribution are
 
 \begin{tabular}{ll}
-     cdd.readme  &   This file itself\\
+     cdd.readme  &  cdd readme file\\
      cdd.c       &   C main source file\\
      cddarith.c  &   C sub source file\\  
+     cddio.c  &   C sub source file\\  
      cdd.h       &   The header file for cdd.c\\
      cdddef.h    &   cdd definition file (whose two lines are to be edited by user)\\
      setoper.c   &   C library for set operation\\
      setoper.h   &   The header file for setoper.c \\
-     cddman.tex  &  Latex source file of cdd User Manual\\
+     cddman.tex  &  Latex source of this manual itself\\
      cddHISTORY  &   brief description of changes made at each updates\\
      ine         &   A subdirectory containing sample input files\\
      ext         &   A subdirectory containing sample output files\\
@@ -617,16 +642,16 @@ and input desired file names at each of file name requests.
 \noindent
 To compile the code in a standard unix environment, type
 \begin{verbatim}
-  cc -O cdd.c cddarith.c setoper.c
+  gcc -O cdd.c cddarith.c cddio.c setoper.c
 \end{verbatim}
 
 to obtain an optimized executable file a.out. The GNU compiler
-gcc can replace cc above, and it is perhaps a better choice since
-some C  compilers do not support ANSI C.
+gcc can be replaced by cc, if aother ANSI  C compiler cc is available.
 Since the program includes some standard ANSI library 
 headers such as stdlib.h and time.h at compilation, 
 the compiler must know the locations of the standard ANSI libraries.
-Also, the files cdd.c, cdd.h, cdddef.h, cddarith.c, setoper.c and setoper.h are supposed to be
+Also, the files cdd.c, cdd.h, cdddef.h, cddarith.c, cddio.c setoper.c and 
+setoper.h are supposed to be
 in the current directory.
 
 \item[(2)] [Recompilation] The first two constants in the program cdddef.h are to be 
@@ -634,7 +659,7 @@ changed by the user if necessary, and the program must be recompiled
 each time after any change is made.   These constants are simply
 to specify the largest size of acceptable input data $(b, -A)$: 
 \begin{verbatim}
-#define MMAX    4001  /* USER'S CHOICE: max row size of A plus one */
+#define MMAX    5001  /* USER'S CHOICE: max row size of A plus one */
 #define NMAX    101   /* USER'S CHOICE: max column size of A plus one */
 \end{verbatim}
 If this input data has $m$ rows and $d+1$ columns, then in the program,
@@ -651,12 +676,46 @@ usual Pascal compilers.
 \item[(3)] [TURBO/THINK C Users] The program cdd.c is written in
 ANSI C, and thus it should run on
 personal computers without any changes if one uses a compliler supporting
-ANSI standard. We have verified that it can be compiled by THINK C without
+ANSI standard. I have been using  THINK C without
 any problems if ANSI library is added to the project together with
-cdd.c, cddarith.c and setoper.c.  We could also compile it with some
+cdd.c, cddarith.c, cddio.c and setoper.c.  I could also compile it with some
 old version of TURBO C.  Due to limited memory capacities of
-these compilers, it is necessary to reduce the constants MMAX and NMAX
+these compilers, it is perhaps necessary to reduce the constants MMAX and NMAX
 to, say 2001 and 51.
+\end{itemize}
+
+
+\section{Some  Useful Tips for Usage}  \label{TIPS}
+
+The computation is done by floating point arithmetic in cdd.  This means that
+there is no guarantee that the program cdd outputs the correct result.  However cdd
+seems to work correctly for many different types of polyhedra if one
+carefully prepares input data files.   The followings
+are some useful tips  for  input data preparation to 
+avoid badly behaving computations.
+
+\begin{itemize}
+
+\item  In cdd, any real value is considered as zero if its absolute value is
+less than $10^{-5}$.  Since the computation is performed with double precision
+arithmetic, the correctness of zero recognition depends greatly on {\bf how
+accurate\/} the input matrix $(b- A)$ is.  For example, you should never use
+$0.9999$ for the value $1$.  Just use the correct value $1$ as it is.
+Unlike many LP softwares, perturbation of data
+can cause some serious problems.  If you want to perturb your data (e.g. right
+hand side) for some reason, do it with large enough constants, say of order
+$10^{-3}$.
+
+
+\item If your matrix contains some irrational number, say
+$\sqrt{5}$, please use an approximation which is correct in at least {\bf ten\/} digits,
+i.e.  $2.236067977$.   See the sample input file  reg600-5.ine in the ine subdirectory.
+ 
+\item  For the same arithmetic reason, please try to scale your input matrix
+as even as possible by multiplying appropriate constants to some rows and
+columns .   The program cdd does not perform any scaling before
+computation.
+
 \end{itemize}
 
 \section{Bugs}  \label{BUGS}
@@ -672,7 +731,6 @@ read any RATIONAL numbers ($a/b$ type with $a$, $b$ integers).
 
 \end{itemize}
 
-
 \section{FTP site}  \label{FTP}
 An anonymous ftp site for the programs is set at EPFL:
 \begin{verbatim}
@@ -683,6 +741,18 @@ An anonymous ftp site for the programs is set at EPFL:
 Since the file is compressed binary file, it is necessary to use binary mode for
 file transfer.
 
+\section{Other Userful Codes}  \label{CODES}
+There are several other useful codes available for vertex enumeration and/or
+convex hull computation  such as rs, qhull, porta and irisa-polylib.
+The pointers to these codes are available at
+\begin{verbatim}
+  1. ftpsite:   ftp elib.zib-berlin.de (130.73.108.11)      
+    directory:  pub/mathprog/polyth
+  2. ftp://ftp.cray.com/pub/FAQs/linear-programming-faq.html
+    (look for "convex hull").
+\end{verbatim}
+
+
 \bigskip
 \noindent
 {\large {\bf Acknowledgements.}} 
@@ -692,14 +762,17 @@ provided me with an ideal opportunity to visit the department
 for the academic year 1993-1994.  Without his 
 generous help and encouragement,
 the present form of this software would not have existed.
-Also I am indebted to Dr. Alain Prodon and Mr. Francois Margot
-of EPFL who used earlier versions of the program extensively,
+Also I am indebted to Dr. Alain Prodon (EPFL) and Dr. Francois Margot
+(Carnegie Mellon Univ.) who used earlier versions of the program extensively,
 found several bugs, and  gave me very helpful suggestions.
 I am thankful to Dr. Henry Crapo of INRIA, France for
 his precious advise on the input and output style of Polyhedra format.
 I would like to thank Dr. Alexander Bockmayr
 of Max Planck Institute, Germany for having used the program and
-reported several bugs of cdd.
+reported several bugs of cdd.  I appreciated a great help of
+Dr. David Bremner of McGill University, Canada, who did extensive
+experiments on  cdd and improved my set cardinality code
+considerably.
 
 \addtolength{\baselineskip}{-0.5\baselineskip}
 \begin{thebibliography}{99}

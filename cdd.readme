@@ -1,4 +1,4 @@
-1994-10-02
+1994-12-05
 -----------------------
 PROGRAM cdd README FILE
 -----------------------
@@ -38,7 +38,8 @@ placed in a newly created sub-directory cdd-*** :
      cdd.readme     This file itself
 
      cdd.c          C main source file
-     cddarith.c     C sub source file  
+     cddarith.c     C subsource file 
+     cddio.c        C subsource file  
      cdd.h          The header file for cdd.c
      cdddef.h       cdd definition file (whose two lines are to be edited by user)
      setoper.c      C library for set operation
@@ -63,12 +64,12 @@ for cddman.dvi file, please ask a local system administrator.
 
 For compilation of cdd, simply use the following:
 
-   % gcc -o cdd cdd.c cddarith.c setoper.c 
+   % gcc -o cdd cdd.c cddarith.c cddio.c setoper.c 
 
 to get an executable file "cdd", where o is the lower letter "oh". 
 For a faster code, compile them with an optimization option as 
 
-   % gcc -o cdd -O cdd.c cddarith.c setoper.c 
+   % gcc -o cdd -O cdd.c cddarith.c cddio.c setoper.c 
 
 In above, gnu C compiler gcc can be replaced by the native C-compiler
 cc of your system if cc supports the modern ANSI C. We have found that

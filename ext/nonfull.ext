@@ -1,0 +1,19 @@
+* cdd: Double Description Method C-Code:Version C0.55a (December 18, 1994)
+* Copyright (C) 1994, Komei Fukuda, fukuda@dma.epfl.ch
+*Input File:nonfull.ine   (   6  x    4)
+*HyperplaneOrder: LexMin
+*Degeneracy preknowledge for computation: None (possible degeneracy)
+*Vertex/Ray enumeration is chosen.
+*Computation starts     at Sun Dec 18 16:01:54 1994
+*            terminates at Sun Dec 18 16:01:54 1994
+*Total processor time = 0 seconds
+*                     = 0 hour 0 min 0 sec
+*FINAL RESULT:
+*Number of Vertices =       2,   Rays =       1
+begin
+        3      4    real
+  1  2  1  1
+  1  2  2  1
+  0  0  0  1
+end
+hull

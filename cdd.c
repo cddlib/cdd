@@ -1,5 +1,15 @@
-#define COPYRIGHT   "Copyright (C) 1994, Komei Fukuda, fukuda@dma.epfl.ch"
-#define DDVERSION   "Version C0.53 (July 29, 1994)"
+/* cdd.c: Main program of the sofware cdd
+   written by Komei Fukuda, fukuda@dma.epfl.ch
+   Version 0.55a, December 18, 1994
+   Standard ftp site: ftp.epfl.ch,  Directory: incoming/dma
+*/
+
+/* cdd : C-Implementation of the double description method for
+   computing all vertices and extreme rays of the polyhedron 
+   P= {x :  b - A x >= 0}.
+   Please read COPYING (GNU General Public Licence) and
+   the manual cddman.tex for detail.
+*/
 
 /*  This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -16,19 +26,13 @@
     Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 */
 
-/* cdd.c : C-Implementation of the double description method for
-   computing all vertices and extreme rays of the polyhedron 
-   P= {x :  b - A x >= 0}.  
-   Please read COPYING (GNU General Public Licence) and
-   the manual cddman.tex for details.
-*/
-
 /* The first version C0.21 was created on November 10,1993 
    with Dave Gillespie's p2c translator 
    from the Pascal program pdd.p written by Komei Fukuda. 
 */
 
-#include "setoper.h" /* set operation library header (Jan. 23,1994 version or later) */
+#include "setoper.h" 
+  /* set operation library header (Dec 5, 1994 version or later) */
 #include "cdddef.h"
 #include "cdd.h"
 #include <stdio.h>
@@ -37,24 +41,28 @@
 #include <math.h>
 #include <string.h>
 
-/* #include <profile.h>   THINK C PROFILER */
-/* #include <console.h>   THINK C PROFILER */
+/* #include <profile.h>    THINK C PROFILER */
+/* #include <console.h>    THINK C PROFILER */
 
 long minput, ninput;   /*size of input data [b -A] */
 long mm, nn;   /*size of the homogenous system to be solved by dd*/
 long projdim;  /*dimension of orthogonal preprojection */
 colset projvars;   /*set of variables spanning the space of preprojection, 
      i.e. the remaining variables are to be removed*/
-rowset MarkedSet, GroundSet, Face, Face1;
+rowset EqualitySet, NonequalitySet, GroundSet, Face, Face1;
 rowrange Iteration, hh;
 rowindex OrderVector;  /* the permutation vector to store a preordered row indeces */
-rowset AddedHyperplanes, InitialHyperplanes;
-long RayCount, FeasibleRayCount, TotalRayCount, VertexCount, ZeroRayCount;
+rowindex EqualityIndex;  
+  /* ith component is 1 if it is equality, -1 if it is strict inequality, 0 otherwise. */
+rowset AddedHyperplanes, WeaklyAddedHyperplanes, InitialHyperplanes;
+long RayCount, FeasibleRayCount, WeaklyFeasibleRayCount,
+  TotalRayCount, VertexCount, ZeroRayCount;
 long EdgeCount, TotalEdgeCount;
 long count_int=0,count_int_good=0,count_int_bad=0;
 boolean DynamicWriteOn, DynamicRayWriteOn, LogWriteOn, debug;
 Amatrix AA;
 Bmatrix InitialRays;
+colindex InitialRayIndex; /* 0 if the corr. ray is for generator of an extreme line */ 
 colrange RHScol;   /* LP RHS column */
 rowrange OBJrow;   /* LP OBJ row */
 LPStatusType LPStatus;
@@ -69,7 +77,10 @@ NumberType Number;
 InequalityType Inequality;
 boolean NondegAssumed;   /* Nondegeneacy preknowledge flag */
 boolean InitBasisAtBottom;  /* if it is on, the initial Basis will be selected at bottom */
-boolean PartialEnumeration; /* Partial enumeration Switch (TRUE if it is restricted on the intersection of MarkedSet hyperplanes) */
+boolean RestrictedEnumeration; /* Restricted enumeration switch (TRUE if it is restricted on the intersection of EqualitySet hyperplanes) */
+boolean RelaxedEnumeration; /* Relaxed enumeration switch (TRUE if NonequalitySet inequalities must be satisfied with strict inequality) */
+boolean RowDecomposition; /* Row decomposition enumeration switch */
+boolean VerifyInput; /* Verification switch for the input data */
 boolean PreOrderedRun; 
   /* TRUE if the rows are ordered before execution & all necessary adjacencies are stored */
 boolean QPivotOn; /* QPivot Switch (TRUE if Q-Pivot scheme of Jack Edmonds is chosen) */
@@ -80,8 +91,9 @@ AdjacencyOutputType AdjacencyOutput;
 ErrorType Error;
 FileInputModeType FileInputMode;
 DataFileType inputfile,ifilehead,ifiletail,
-  outputfile,projfile,icdfile,adjfile,logfile;
-FILE *reading, *writing, *writing_proj, *writing_icd, *writing_adj,*writing_log;
+  outputfile,projfile,icdfile,adjfile,logfile,dexfile,verfile;
+FILE *reading, *writing, *writing_proj, 
+  *writing_icd, *writing_adj,*writing_log,*writing_dex,*writing_ver,*reading_dex;
 time_t starttime, endtime;
 unsigned int rseed=1;  /* random seed for random row permutation */
 
@@ -96,218 +108,13 @@ void DefaultOptionSetup(void)
   NondegAssumed = FALSE;
   RecomputeRowOrder=TRUE;
   PreOrderedRun=TRUE;
+  VerifyInput=FALSE;
   Conversion = IneToExt;
     
   IncidenceOutput = IncOff;
   AdjacencyOutput = AdjOff;
   InitBasisAtBottom = FALSE;
   QPivotOn=FALSE;
-}
-
-void SetInputFile(FILE **f, boolean *success)
-{
-  boolean opened=FALSE,stop, quit=FALSE;
-  int i,dotpos=0, semipos=0, ifilelen=0;
-  char ch;
-  char *tempname;
-  
-  *success=FALSE;
-  while (!opened && !quit) {
-    if (FileInputMode!=Auto){
-      printf("\n>> Input file (*.ine) : ");
-      scanf("%s",inputfile);
-      ch=getchar();
-    }
-    stop=FALSE;
-    for (i=0; i<filenamelen && !stop; i++){
-      ch=inputfile[i];
-      switch (ch) {
-        case '.': 
-          dotpos=i+1;
-          break;
-        case ';':  case ' ':  case '\0':  case '\n':  case '\t':     
-          if (ch==';'){
-            semipos=i+1;
-            FileInputMode=SemiAuto;   
-            /* semicolon at the end of the filename
-            -> output file names will be creeated with defaults. */
-          }
-          stop=TRUE;
-          tempname=(char*)calloc(filenamelen,sizeof ch);
-          strncpy(tempname, inputfile, i);
-          strcpy(inputfile,tempname);
-          break;
-      }
-    }
-    if (dotpos>0){
-      strncpy(ifilehead, inputfile, dotpos-1);
-    }else{
-      strcpy(ifilehead, inputfile);
-    }
-    if (debug){
-      printf("inputfile name: %s\n", inputfile);  
-      printf("inputfile name head: %s\n", ifilehead);  
-      printf("semicolon pos: %d\n", semipos);
-    }  
-    if ( ( *f = fopen(inputfile, "r") )!= NULL) {
-      if (DynamicWriteOn) printf("input file %s is open\n", inputfile);
-      opened=TRUE;
-      *success=TRUE;
-    }
-    else{
-      printf("The file %s not found\n",inputfile);
-      if (FileInputMode==Auto) {
-        quit=TRUE;
-      }
-    }
-  }
-}
-
-void SetWriteFile(FILE **f, DataFileType fname, char cflag, char *fscript)
-{
-  boolean quit=FALSE;
-  char *extension;
-  
-  switch (cflag) {
-    case 'o':
-      extension=".ext";break;
-    case 'a':
-      extension=".adj";break;
-    case 'i':
-      extension=".icd";break;
-    case 'l':
-      extension=".ddl";break;
-    case 'p':
-      extension="sub.ine";break;
-    default:
-      extension=".xxx";break;
-  }
-  if (FileInputMode==Manual){
-    while (!quit) {
-      printf("\n>> %s file name (*%s)   : ",fscript, extension);
-      scanf("%s",fname);
-      if (fname[0]==';'|| fname[0]<'0'){
-        quit=TRUE;  /* default file name */
-      } 
-      else if (strcmp(inputfile, fname)!=0){
-        *f = fopen(fname, "w");
-        if (DynamicWriteOn) printf("write file %s is open\n",fname);
-        goto _L99;
-      }
-      else {
-        printf("%s file %s must have a name different from inputfile.\n",fscript,fname);
-      }
-    }
-  }
-  /* Auto or SemiAuto FileInput */
-  strcpy(fname,ifilehead); 
-  strcat(fname,extension); 
-  if (strcmp(inputfile, fname)==0) {
-    strcpy(fname,inputfile); 
-    strcat(fname,extension); 
-  }
-  *f = fopen(fname, "w");
-  if (DynamicWriteOn) printf("%s file %s is open\n",fscript,fname);
-_L99:;
-}
-
-
-void SetNumberType(char *line)
-{
-  if (strncmp(line, "integer", 7)==0) {
-    Number = Integer;
-    return;
-  }
-  else if (strncmp(line, "rational", 8)==0) {
-    Number = Rational;
-    Error=ImproperInputFormat;  /* Rational Input not supported */
-    return;
-  }
-  else if (strncmp(line, "real", 4)==0) {
-    Number = Integer;
-    return;
-  }
-  else { 
-    Number=Unknown;
-    Error=ImproperInputFormat;
-  }
-}
-
-
-long Cardinality(long *S)
-{
-  rowrange i;
-  long car;
-
-  car = 0;
-  for (i = 1; i <= mm; i++) {
-    if (set_member(i, S))
-      car++;
-  }
-  return car;
-}
-
-
-void WriteReal(FILE *f, double x)
-{
-  long ix1,ix2,ix;
-
-  ix1= fabs(x) * 10000. + 0.5;
-  ix2= (fabs(x) + 0.5);
-  ix2= ix2*10000;
-  if ( ix1 == ix2) {
-    if (x>0) {
-      ix = x + 0.5;
-    } else {
-      ix = -x + 0.5;
-      ix = -ix;
-    }
-    fprintf(f, " %2ld", ix);
-  } else
-    fprintf(f, " % .9E", x);
-}
-
-
-void WriteSetElements(FILE *f, long *S)
-{
-  rowrange i;
-
-  for (i = 1; i <= mm; i++) {
-    if (set_member(i, S))
-      fprintf(f, " %4ld", i);
-  }
-}
-
-
-void WriteIncidence(FILE *f, RayRecord *RR)
-{
-  rowset cset;
-  long zcar;
-
-  set_initialize(&cset,mm);
-  zcar = Cardinality(RR->ZeroSet);
-  switch (IncidenceOutput) {
-
-  case IncCardinality:
-    fprintf(f, "%8ld", zcar);
-    break;
-
-  case IncSet:
-    if (mm - zcar >= zcar) {
-      fprintf(f, "%8ld", zcar);
-      WriteSetElements(f, RR->ZeroSet);
-    } else {
-      set_diff(cset, GroundSet, RR->ZeroSet);
-      fprintf(f, "%8ld", zcar - mm);
-      WriteSetElements(f, cset);
-    }
-    break;
-
-  case IncOff:
-    break;
-  }
-  putc('\n', f);
-  set_free(cset);
 }
 
 void CheckAdjacency1(RayRecord **RP1, RayRecord **RP2,
@@ -320,7 +127,7 @@ void CheckAdjacency1(RayRecord **RP1, RayRecord **RP2,
   set_int(Face, Face1, AddedHyperplanes);
   if (debug)
     printf("Check adjacency\n");
-  if (Cardinality(Face)< nn - 2) {
+  if (set_card(Face)< nn - 2) {
     *adjacent = FALSE;
     return;
   }
@@ -334,20 +141,27 @@ void CheckAdjacency1(RayRecord **RP1, RayRecord **RP2,
   }
 }
 
-
 void CheckAdjacency2(RayRecord **RP1, RayRecord **RP2,
 			    boolean *adjacent)
 {
   RayRecord *TempRay;
+  boolean localdebug=FALSE;
 
+  if (debug) localdebug=TRUE;
   *adjacent = TRUE;
   set_int(Face1, (*RP1)->ZeroSet, (*RP2)->ZeroSet);
   set_int(Face, Face1, AddedHyperplanes);
-  if (debug){
-    printf("Check adjacency\n");
+  if (localdebug){
+    printf("Check adjacency of\n");
+    WriteRayRecord(stdout, *RP1);
+    WriteRayRecord(stdout, *RP2);    
   }
-  if (Cardinality(Face)< nn - 2) {
+  if (set_card(Face)< nn - 2) {
     *adjacent = FALSE;
+    if (localdebug) {
+      printf("non adjacent: set_card(face) %ld < %ld = nn.\n",
+        set_card(Face),nn);
+    }
     return;
   }
   else if (NondegAssumed) {
@@ -358,8 +172,7 @@ void CheckAdjacency2(RayRecord **RP1, RayRecord **RP2,
   while (TempRay != NULL && *adjacent) {
     if (TempRay != *RP1 && TempRay != *RP2) {
     	set_int(Face1, TempRay->ZeroSet, AddedHyperplanes);
-      	if (set_subset(Face, Face1))
-			*adjacent = FALSE;
+      	if (set_subset(Face, Face1)) *adjacent = FALSE;
     }
     TempRay = TempRay->Next;
   }
@@ -445,8 +258,8 @@ void SelectNextHyperplane2(long *excluded, rowrange *hnext)
   }
   if (DynamicWriteOn) {
     printf("*infeasible rays (min) =%5ld, #feas rays =%5ld\n", infmin, fi);
-    fprintf(writing, "*infeasible rays (min) =%5ld, #feas rays =%5ld\n",
-	    infmin, fi);
+    fprintf(writing, 
+      "*infeasible rays (min) =%5ld, #feas rays =%5ld\n", infmin, fi);
   }
 }
 
@@ -468,8 +281,8 @@ void SelectNextHyperplane3(long *excluded, rowrange *hnext)
   }
   if (DynamicWriteOn) {
     printf("*infeasible rays (max) =%5ld, #feas rays =%5ld\n", infmax, fi);
-    fprintf(writing, "*infeasible rays (max) =%5ld, #feas rays =%5ld\n",
-	    infmax, fi);
+    fprintf(writing,
+      "*infeasible rays (max) =%5ld, #feas rays =%5ld\n", infmax, fi);
   }
 }
 
@@ -484,14 +297,14 @@ void SelectNextHyperplane4(long *excluded, rowrange *hnext)
     if (!set_member(i, excluded)) {
       FeasibilityIndices(&fea, &inf, i);
       if (fea <= inf)
-	tmax = inf;
+        tmax = inf;
       else
-	tmax = fea;
+        tmax = fea;
       if (tmax > max) {
-	max = tmax;
-	fi = fea;
-	infi = inf;
-	*hnext = i;
+        max = tmax;
+        fi = fea;
+        infi = inf;
+        *hnext = i;
       }
     }
   }
@@ -522,7 +335,7 @@ void SelectNextHyperplane5(long *excluded, rowrange *hnext)
       if (minindex == 0) {
 	    minindex = i;
 	    v1=v2;
-      } else if (LexSmaller(v2,v1)) {
+      } else if (LexSmaller(v2,v1,nn)) {
         minindex = i;
 	    v1=v2;
       }
@@ -546,7 +359,7 @@ void SelectNextHyperplane6(long *excluded, rowrange *hnext)
       if (maxindex == 0) {
         maxindex = i;
         v1=v2;
-      } else if (LexLarger(v2, v1)) {
+      } else if (LexLarger(v2, v1, nn)) {
         maxindex = i;
         v1=v2;
      }
@@ -555,21 +368,21 @@ void SelectNextHyperplane6(long *excluded, rowrange *hnext)
   *hnext = maxindex;
 }
 
-long Partition(rowindex OV, long p, long r)
+long Partition(rowindex OV, long p, long r, Amatrix A, long nmax)
 {
   double *x;
   long i,j,ovi;
   
-  x=AA[OV[p]-1];
+  x=A[OV[p]-1];
   i=p-1;
   j=r+1;
   while (TRUE){
     do{
       j--;
-    } while (LexLarger(AA[OV[j]-1],x));
+    } while (LexLarger(A[OV[j]-1],x,nmax));
     do{
       i++;
-    } while (LexSmaller(AA[OV[i]-1],x));
+    } while (LexSmaller(A[OV[i]-1],x,nmax));
     if (i<j){
       ovi=OV[i];
       OV[i]=OV[j];
@@ -581,39 +394,88 @@ long Partition(rowindex OV, long p, long r)
   }
 }
 
-void QuickSort(rowindex OV, long p, long r)
+void QuickSort(rowindex OV, long p, long r, Amatrix A, long nmax)
 {
   long q;
   
   if (p < r){
-    q = Partition(OV, p, r);
-    QuickSort(OV, p, q);
-    QuickSort(OV, q+1, r);
+    q = Partition(OV, p, r, A, nmax);
+    QuickSort(OV, p, q, A, nmax);
+    QuickSort(OV, q+1, r, A, nmax);
   }
 }
+
+void LineShellingOrder(rowindex OV, double *z, double *d)
+/* find the shelling ordering induced by a point 
+   z (interior point, i.e. A z > 0) and a direction vector  d */
+{
+  long i,j;
+  double temp1,temp2,infinity=10.0e+20;
+  static double *beta;
+  static long mlast=0;
+  boolean localdebug=FALSE;
+  
+  if ( mlast<mm ){
+    if (beta!=NULL) free(beta);
+    beta=(double *)calloc(mm, sizeof *beta);
+    /* initialize only for the first time or when last mm is smaller */
+    if (localdebug) printf("Initialize the component beta[%ld],\n", i-1);
+    mlast=mm;
+  }
+  for (i=1; i<= mm; i++) beta[i-1]=AA[i-1][0]; /* store the first column in beta */
+  for (i=1; i<= mm; i++){
+    temp1 = 0.0;
+    temp2 = 0.0;
+    for (j = 1; j <= nn; j++){
+      temp1 += AA[i - 1][j-1] * z[j-1];
+      temp2 += AA[i - 1][j-1] * d[j-1];
+    }
+    if (abs(temp1)>zero) AA[i-1][0]=temp2/temp1;  
+    else if (temp1*temp2 > 0) AA[i-1][0]= infinity;
+    else AA[i-1][0]= -infinity;
+     /* use the first column of AA tentatively */
+  }
+  if (localdebug) 
+    for (i=1; i<= mm; i++){
+      printf("set AA[%ld] = %lg\n", i, AA[i-1][0]);
+    }
+  QuickSort(OV, 1, mm, AA, 1);
+  for (i=1; i<= mm; i++) {
+    AA[i-1][0]=beta[i-1]; 
+     /* restore the first column of AA */ 
+    if (localdebug) printf("restore AA[%ld] with %lg\n", i, AA[i-1][0]);
+  }
+}
+
+
+#ifndef RAND_MAX 
+#define RAND_MAX 32767 
+#endif
 
 void RandomPermutation(rowindex OV, long t, unsigned int seed)
 {
   long k,j,ovj;
-  double u,xk,rmax=RAND_MAX;
-  time_t ctime;
+  double u,xk,r,rand_max=(double) RAND_MAX;
+  boolean localdebug=FALSE;
 
   srand(seed);
   for (j=t; j>1 ; j--) {
-    u=rand() / rmax;
+    r=rand();
+    u=r/rand_max;
     xk=j*u +1;
     k=xk;
+    if (localdebug) printf("u=%lg, k=%ld, r=%lg, randmax= %lg\n",u,k,r,rand_max);
     ovj=OV[j];
     OV[j]=OV[k];
     OV[k]=ovj;
-    if (debug) printf("row %ld is exchanged with %ld\n",j,k); 
+    if (localdebug) printf("row %ld is exchanged with %ld\n",j,k); 
   }
 }
 
 void ComputeRowOrderVector(rowindex OV, HyperplaneOrderType ho)
 {
-  long i,itemp;
-  boolean exchanged=TRUE;
+  long i,itemp,j;
+  Arow zvec, dvec;
   
   OV[0]=0;
   switch (ho){
@@ -621,18 +483,18 @@ void ComputeRowOrderVector(rowindex OV, HyperplaneOrderType ho)
     for(i=1; i<=mm; i++) OV[i]=mm-i+1;
     break;
 
-  case MinIndex: case MinCutoff:  case MixCutoff:  case MaxCutoff:
+  case MinIndex: 
     for(i=1; i<=mm; i++) OV[i]=i;
     break;
 
-  case LexMin:
+  case LexMin: case MinCutoff: case MixCutoff: case MaxCutoff:
     for(i=1; i<=mm; i++) OV[i]=i;
-    QuickSort(OV, 1, mm);
+    QuickSort(OV, 1, mm, AA, nn);
     break;
 
   case LexMax:
     for(i=1; i<=mm; i++) OV[i]=i;
-    QuickSort(OV, 1, mm);
+    QuickSort(OV, 1, mm, AA, nn);
     for(i=1; i<=mm/2;i++){   /* just reverse the order */
       itemp=OV[i];
       OV[i]=OV[mm-i+1];
@@ -645,6 +507,20 @@ void ComputeRowOrderVector(rowindex OV, HyperplaneOrderType ho)
     if (rseed<=0) rseed=1;
     RandomPermutation(OV, mm, rseed);
     break;
+
+  case LineShelling:
+    for(i=1; i<=mm; i++) OV[i]=i;
+    zvec[0]=1;
+    dvec[0]=0;
+    if (rseed<=0) rseed=1;
+    srand(rseed);
+    for(j=2; j<=nn; j++){
+      zvec[j-1]=0;
+      dvec[j-1]=nn-j+1;
+      /* dvec[j-1]=rand(); */
+    }
+    LineShellingOrder(OV, zvec, dvec);
+    break;
   }
 }
 
@@ -653,43 +529,40 @@ void UpdateRowOrderVector(long *PriorityRows)
 in highest order.
 */
 {
-  rowrange i=0,i1,j=0,j1,ki=0,kj=0;
-  boolean found, found2, localdebug=FALSE;
+  rowrange i,j,k,i1,j1,oj;
+  long rr;
+  boolean found, localdebug=FALSE;
   
-  if (localdebug) set_write(PriorityRows);
+  if (debug) localdebug=TRUE;
   found=TRUE;
-  do {
+  rr=set_card(PriorityRows);
+  if (localdebug) set_write(PriorityRows);
+  for (i=1; i<=rr; i++){
     found=FALSE;
-    for (i1=1; i1<=nn && !found; i1++){
-      ki=OrderVector[i1];
-      if (!set_member(ki, PriorityRows)){
+    for (j=i; j<=mm && !found; j++){
+      oj=OrderVector[j];
+      if (set_member(oj, PriorityRows)){
         found=TRUE;
-        if (localdebug) printf("%ldth in sorted list (row %ld) is not in PriorityRows\n", i1, ki);
-        i=i1;
+        if (localdebug) printf("%ldth in sorted list (row %ld) is in PriorityRows\n", j, oj);
+        j1=j;
       }
     }
     if (found){
-      found2=FALSE;
-      for (j1=i+1; j1<=mm && !found2 ; j1++){
-        kj=OrderVector[j1];
-        if (set_member(kj, PriorityRows)){
-          found2=TRUE;
-          j=j1;
-        }
-      }
-      if (found2){
+      if (j1>i) {
+        /* shift everything lower: OV[i]->OV[i+1]..OV[j1-1]->OV[j1] */
+        for (k=j1; k>=i; k--) OrderVector[k]=OrderVector[k-1];
+        OrderVector[i]=oj;
         if (localdebug){
-          printf("exchanged with %ldth element (row %ld)\n", j, kj);
+          printf("OrderVector updated to:\n");
+          for (j = 1; j <= mm; j++) printf(" %2ld", OrderVector[j]);
+          printf("\n");
         }
-        OrderVector[i]=kj;
-        OrderVector[j]=ki;
       }
-      else{
-        printf("Error: UpdateRowOrderVector\n");
-        goto _L99;
-      }
+    } else {
+      printf("UpdateRowOrder: Error.\n");
+      goto _L99;
     }
-  }while (found);
+  }
 _L99:;
 }
 
@@ -707,404 +580,100 @@ void SelectPreorderedNext(long *excluded, rowindex OV, rowrange *hnext)
 void SelectNextHyperplane(HyperplaneOrderType ho, 
          long *excluded, rowrange *hh, boolean *RefreshOrderVector)
 {
-  if (*RefreshOrderVector||OrderVector==NULL){
-    if (OrderVector!=NULL) free(OrderVector);
-    OrderVector=(long *)calloc(mm+1, sizeof *OrderVector);
-    ComputeRowOrderVector(OrderVector, ho);
-    *RefreshOrderVector=FALSE;
-  }  
-  switch (ho) {
-
-  case MinCutoff:
-    SelectNextHyperplane2(excluded,hh);
-    break;
-
-  case MaxCutoff:
-    SelectNextHyperplane3(excluded, hh);
-    break;
-
-  case MixCutoff:
-    SelectNextHyperplane4(excluded, hh);
-    break;
-
-  default:
+  if (PreOrderedRun){
+    if (debug) {
+      printf("debug SelectNextHyperplane: Use PreorderNext\n");
+    }
     SelectPreorderedNext(excluded, OrderVector, hh);
-    break;
   }
-}
+  else {
+    if (debug) {
+      printf("debug SelectNextHyperplane: Use DynamicOrderedNext\n");
+    }
 
-
-
-void WriteProgramDescription(FILE *f)
-{
-  fprintf(f, "* cdd: Double Description Method C-Code:%s\n", DDVERSION);
-  fprintf(f,"* %s\n",COPYRIGHT);
-}
-
-void WriteRunningMode(FILE *f)
-{
-  if (Conversion==IneToExt || Conversion==ExtToIne){ 
-    switch (HyperplaneOrder) {
-
-    case MinIndex:
-      fprintf(f, "*HyperplaneOrder: MinIndex\n");
-      break;
+    switch (ho) {
 
     case MaxIndex:
-      fprintf(f, "*HyperplaneOrder: MaxIndex\n");
+      SelectNextHyperplane0(excluded,hh);
+      break;
+
+    case MinIndex:
+      SelectNextHyperplane1(excluded,hh);
       break;
 
     case MinCutoff:
-      fprintf(f, "*HyperplaneOrder: MinCutoff\n");
+      SelectNextHyperplane2(excluded,hh);
       break;
 
     case MaxCutoff:
-      fprintf(f, "*HyperplaneOrder: MaxCutoff\n");
-    break;
+      SelectNextHyperplane3(excluded, hh);
+      break;
 
     case MixCutoff:
-      fprintf(f, "*HyperplaneOrder: MixCutoff\n");
-      break;
-
-    case LexMin:
-      fprintf(f, "*HyperplaneOrder: LexMin\n");
-      break;
-
-    case LexMax:
-      fprintf(f, "*HyperplaneOrder: LexMax\n");
-      break;
-
-    case RandomRow:
-      fprintf(f, "*HyperplaneOrder: Random,  Seed = %d\n",rseed);
-      break;
-    }
-    if (NondegAssumed) {
-      fprintf(f, "*Degeneracy preknowledge for computation: NondegenerateAssumed\n");
-    }
-    else {
-      fprintf(f, "*Degeneracy preknowledge for computation: None (possible degeneracy)\n");
-    }
-  }
-  switch (Conversion) {
-    case ExtToIne:
-      fprintf(f, "*Hull computation is chosen.\n");
-      break;
-    
-    case IneToExt:
-      fprintf(f, "*Vertex/Ray enumeration is chosen.\n");
-      break;
-    
-    case LPmax:
-      fprintf(f, "*LP (maximization) is chosen.\n");
-      break;
-
-    case LPmin:
-      fprintf(f, "*LP (minimization) is chosen.\n");
-      break;
-
-    case Projection:
-      fprintf(f, "*Preprojection is chosen.\n");
-      break;
-  
-    default: break;
-  }
-  if (PartialEnumeration) {
-    fprintf(f, "*Partial enumeration is chosen.  The permanently active rows are:");
-    WriteSetElements(f,MarkedSet);
-    fprintf(f,"\n");
-  }
-}
-
-void WriteCompletionStatus(FILE *f)
-{
-  if (Iteration<mm && CompStatus==AllFound) {
-    fprintf(f,"*Computation completed at Iteration %4ld.\n", Iteration);
-  } 
-  if (CompStatus == RegionEmpty) {
-    fprintf(f,"*Computation completed at Iteration %4ld because the region found empty.\n", Iteration);
-  }   
-}
-
-
-void WriteTimes(FILE *f)
-{ 
-  long ptime,ptime_sec,ptime_minu, ptime_hour;
-  
-  /* ptime=difftime(endtime,starttime); */   /* This function is ANSI standard, but not available sometime */
-  ptime=endtime-starttime;      /* This is to replace the line above, but it may not give correct time in seconds */ 
-  ptime_hour=ptime/3600;
-  ptime_minu=(ptime-ptime_hour*3600)/60;
-  ptime_sec=ptime%60;
-  fprintf(f, "*Computation starts     at %s", asctime(localtime(&starttime)));
-  fprintf(f, "*            terminates at %s", asctime(localtime(&endtime)));
-  fprintf(f, "*Total processor time = %ld seconds\n", ptime);
-  fprintf(f, "*                     = %ld hour %ld min %ld sec\n", ptime_hour,ptime_minu,ptime_sec);
-}
-
-
-void WriteAdjacency(FILE *f)
-{
-  RayRecord *RayPtr1, *RayPtr2;
-  long pos1, pos2, degree;
-  boolean adj;
-  node *headnode, *tailnode, *newnode, *prevnode;
-
-  headnode=NULL; tailnode=NULL;
-  switch (Conversion) {
-  case IneToExt:
-    if (AdjacencyOutput==OutputAdjacency)
-      fprintf(f,"*Adjacency List of output (=vertices/rays)\n");
-    break;
-  case ExtToIne:
-    if (AdjacencyOutput==OutputAdjacency)
-      fprintf(f,"*Adjacency List of output (=inequalities=facets)\n");
-      break;
-
-  default:
-    break;
-  }
-  fprintf(f, "*cdd input file : %s   (%4ld  x %4ld)\n",
-	  inputfile, minput, ninput);
-  fprintf(f, "*cdd output file: %s\n", outputfile);
-  fprintf(f,"begin\n");
-  fprintf(f,"  %ld\n",RayCount);
-  if (RayCount==0){
-    goto _L99;
-  }
-  LastRay->Next=NULL;
-  for (RayPtr1=FirstRay, pos1=1;RayPtr1 != NULL; RayPtr1 = RayPtr1->Next, pos1++){
-    for (RayPtr2=FirstRay, pos2=1,degree=0; RayPtr2 != NULL; RayPtr2 = RayPtr2->Next, pos2++){
-      if (RayPtr1!=RayPtr2){
-        CheckAdjacency2(&RayPtr1, &RayPtr2, &adj);
-        if (adj) {
-          degree++;
-          if (degree==1){
-            newnode=(node *)malloc(sizeof *newnode);
-            newnode->key=pos2;
-            newnode->next=NULL;
-            headnode=newnode;
-            tailnode=newnode;
-          }
-          else{
-            newnode=(node *)malloc(sizeof *newnode);
-            newnode->key=pos2;
-            newnode->next=NULL;
-            tailnode->next=newnode;
-            tailnode=newnode;
-          }
-        }
-      }
-    }
-    fprintf(f," %ld  %ld :", pos1, degree);
-    for (newnode=headnode; newnode!=NULL; newnode=newnode->next, free(prevnode)){
-      prevnode=newnode;
-      fprintf(f," %ld", newnode->key);
-    }
-    fprintf(f,"\n");
-  }
-_L99:;
-  fprintf(f,"end\n");
-}
-
-void WriteDDResult(void)
-{
-  RayRecord *TempPtr;
-
-  if (!debug) writing=freopen(outputfile,"w",writing);
-  time(&endtime);
-  WriteProgramDescription(writing);
-  fprintf(writing, "*Input File:%.*s   (%4ld  x %4ld)\n",
-	  filenamelen, inputfile, minput, ninput);
-  WriteRunningMode(writing);
-  WriteCompletionStatus(writing);
-  WriteTimes(writing);
-  if (Conversion == ExtToIne)
-    fprintf(writing,
-      "*Since hull computation is chosen, the output is a minimal inequality system\n");
-  fprintf(writing, "*FINAL RESULT:\n");
-  if (DynamicWriteOn)
-    printf("*Computation complete.\n");
-  if (Conversion == IneToExt) {
-	if (Inequality==ZeroRHS && Conversion == IneToExt){
-      fprintf(writing, "*Number of Rays =%8ld\n", RayCount);
-	  fprintf(writing, "*Caution!: the origin is a vertex, but cdd does not output this trivial vertex\n");
-      if (DynamicWriteOn){
-        printf("*Number of Rays =%8ld\n", RayCount);
-	    printf("*Caution!: the origin is a vertex, but cdd does not output this trivial vertex\n");
-	  }
-    }else{
-      if (DynamicWriteOn)
-        printf("*Number of Vertices =%8ld,   Rays =%8ld\n",
-	       VertexCount, RayCount - VertexCount);
-      fprintf(writing, "*Number of Vertices =%8ld,   Rays =%8ld\n",
-	      VertexCount, RayCount - VertexCount);
-	}
-  } else {
-    if (DynamicWriteOn)
-      printf("*Number of Facets =%8ld\n", RayCount);
-    fprintf(writing, "*Number of Facets =%8ld\n", RayCount);
-  }
-  fprintf(writing, "begin\n");
-  switch (Inequality) {
-  case ZeroRHS:
-    fprintf(writing, " %8ld  %5ld    real\n", RayCount, nn + 1);
-    break;
-  case NonzeroRHS:
-    fprintf(writing, " %8ld  %5ld    real\n", RayCount, nn);
-    break;
-  }
-  if (IncidenceOutput == IncSet) {
-    writing_icd=freopen(icdfile,"w",writing_icd);
-    switch (Conversion) {
-    case IneToExt:
-      fprintf(writing_icd,
-	    "*Incidences of output(=vertices/rays) and input (=hyperplanes)\n");
-      fprintf(writing_icd,
-        "*   for each output, #incidence and the set of hyperplanes containing it\n");
-      fprintf(writing_icd,
-	    "*   or its complement with its cardinality with minus sign\n");
-      break;
-    case ExtToIne:
-      fprintf(writing_icd,
-	    "*Incidences of output(=facets) and input (=points)\n");
-      fprintf(writing_icd,
-        "*   for each output, #incidence and the set of points lying on it\n");
-      fprintf(writing_icd,
-	    "*   or its complement with its cardinality with minus sign\n");
+      SelectNextHyperplane4(excluded, hh);
       break;
 
     default:
+      SelectNextHyperplane0(excluded,hh);
       break;
     }
-    fprintf(writing_icd, "*cdd input file : %s   (%4ld  x %4ld)\n",
-	  inputfile, minput, ninput);
-    fprintf(writing_icd, "*cdd output file: %s\n", outputfile);
-    fprintf(writing_icd, "begin\n");
-    fprintf(writing_icd, "%8ld%5ld%5ld\n", RayCount, minput, mm);
-  }
-  TempPtr = FirstRay;
-  while (TempPtr != NULL) {
-    WriteRayRecord(writing, TempPtr);
-    if (IncidenceOutput == IncSet)
-      WriteIncidence(writing_icd, TempPtr);
-    TempPtr = TempPtr->Next;
-  }
-  fprintf(writing, "end\n");
-  if (DynamicWriteOn) {
-    WriteCompletionStatus(stdout);
-    WriteTimes(stdout);
-  }
-  if (LogWriteOn) {
-    fprintf(writing_log, "end\n");
-    WriteRunningMode(writing_log);
-    WriteCompletionStatus(writing_log);
-    fprintf(writing_log, "*set_intersection total#, effective#, loss# = %ld   %ld   %ld\n", 
-      count_int, count_int_good, count_int_bad);
-    WriteTimes(writing_log);
-  }
-  if (IncidenceOutput == IncSet)
-    fprintf(writing_icd, "end\n");
-  if (AdjacencyOutput != AdjOff){
-    if (DynamicWriteOn) printf("Writing the adjacency file...\n");
-    WriteAdjacency(writing_adj);
   }
 }
 
-void WriteProjRayRecord(FILE *f, RayRecord *RR, long *dbrow)
+void CompileDecompResult(void)
 {
   long i,j,k;
+  double value;
+  long mray,nray;
+  char numbtype[wordlenmax],command[wordlenmax],line[linelenmax];
   static double *vec;
-  static rowset dbset;
   static long mprev=0;
+  boolean localdebug=FALSE;
   
-  if (dbset==NULL || mprev<mm){
-    set_initialize(&dbset,mm);  
+  if (mprev<mm){
     vec=(double *)calloc(mm, sizeof *vec);
     /* initialize only for the first time or when a larger space is needed */
     mprev=mm;
-    if (debug) printf("mprev is replaced with  = %ld\n", mprev);
+    if (localdebug) printf("mprev is replaced with  = %ld\n", mprev);
   }
-  for (j = 1; j <= mm-nn; j++){
-    i=dbrow[j];
-    set_addelem(dbset,i);
-    if (debug) printf("index %ld is added to dbset\n",i);
-    vec[i-1]=0;
-    for (k=1; k<=nn; k++) {
-      vec[i-1]+= (RR->Ray[k-1])*AA[j-1][k-1];
+  AddArtificialRay();
+  if (writing_dex != NULL){
+    fclose(writing_dex);
+    if (DynamicWriteOn) printf("closing the file %s\n",dexfile);
+  }
+  reading_dex = fopen(dexfile, "r");
+  for (i=1; i<=mm-nn+2;i++){
+    found=FALSE;
+    while (!found)
+    {
+      if (fscanf(reading_dex,"%s",command)==EOF) {
+       Error=ImproperInputFormat;
+       goto _L99;
+      }
+      else if (strncmp(command, "begin", 5)==0) {
+        found=TRUE;
+      }
     }
-    if (debug) printf("vec[ %ld]= %.5E \n",i-1, vec[i-1]);
-  }
-  i=1;
-  for (j = 1; j <= mm; j++){
-    if (!set_member(j,dbset)){
-      vec[j-1]=RR->Ray[i-1];
-      i++;
+    fscanf(reading_dex, "%ld %ld %s", &mray, &nray, numbtype);
+    if (localdebug) printf("decomp size = %ld x %ld\nNumber Type = %s\n", mray, nray, numbtype);
+    for (k=1; k<=mray;k++){
+      for (j=1; j<=nray; j++){
+        fscanf(reading_dex, "%lf", &value);
+        if (Inequality==NonzeroRHS) {
+          vec[j - 1] = value;
+        } else if (j>=2) {
+          vec[j - 2] = value;
+        }
+        if (localdebug) WriteReal(stdout, value);
+      }
+      if (localdebug) printf("\n");
+      AddRay(vec);
     }
   }
-  fprintf(f, " %2d", 0);
-  for (j = 0; j < mm; j++)
-    WriteReal(f, vec[j]);
-  putc('\n', f);
+_L99:;
 }
 
 
-
-void WriteProjResult(long *dbrow)
-{
-  RayRecord *TempPtr;
-
-  if (!debug) writing=freopen(outputfile,"w",writing);
-  time(&endtime);
-  WriteProgramDescription(writing);
-  fprintf(writing, "*Input File:%.*s   (%4ld  x %4ld)\n",
-	  filenamelen, inputfile, minput, ninput);
-  WriteRunningMode(writing);
-  WriteCompletionStatus(writing);
-  WriteTimes(writing);
-  fprintf(writing, "*FINAL RESULT:\n");
-  if (DynamicWriteOn)
-    printf("*Computation complete.\n");
-  if (DynamicWriteOn)
-     printf("*Number of Vertices =%8ld,   Rays =%8ld\n",
-	   VertexCount, RayCount - VertexCount);
-  fprintf(writing, "*Number of Vertices =%8ld,   Rays =%8ld\n",
-	 VertexCount, RayCount - VertexCount);
-  fprintf(writing, "begin\n");
-  fprintf(writing, " %8ld  %5ld    real\n", RayCount, mm + 1);
-  TempPtr = FirstRay;
-  while (TempPtr != NULL) {
-    WriteProjRayRecord(writing, TempPtr, dbrow);
-    TempPtr = TempPtr->Next;
-  }
-  fprintf(writing, "end\n");
-  if (DynamicWriteOn) {
-    WriteCompletionStatus(stdout);
-    WriteTimes(stdout);
-  }
-  if (LogWriteOn) {
-    fprintf(writing_log, "end\n");
-    WriteRunningMode(writing_log);
-    WriteCompletionStatus(writing_log);
-    WriteTimes(writing_log);
-  }
-  if (AdjacencyOutput != AdjOff){
-    if (DynamicWriteOn) printf("Writing the adjacency file...\n");
-    WriteAdjacency(writing_adj);
-  }
-}
-
-void InitialWriting(void)
-{
-  if (LogWriteOn) {
-    fprintf(writing_log, "*Input File:%.*s   (%4ld  x %4ld)\n",
-	  filenamelen, inputfile, minput, ninput);
-	fprintf(writing_log,"*Initial set of hyperplanes: ");
-    WriteSetElements(writing_log, AddedHyperplanes);
-    fprintf(writing_log,"\n");
-    fprintf(writing_log, "begin\n");
-    fprintf(writing_log, "%5ld %3d\n", mm - nn, 5);
-  }
-}
 
 void DDInit(void)
 {
@@ -1112,102 +681,66 @@ void DDInit(void)
 
   Error=None;
   CompStatus=InProgress;
+  SetInequalitySets(EqualityIndex);
   set_initialize(&InitialHyperplanes,mm);
   set_initialize(&AddedHyperplanes,mm);
-  set_initialize(&GroundSet, mm);
+  set_initialize(&WeaklyAddedHyperplanes,mm);
   set_initialize(&Face, mm);   /* used in CheckAdjacency  */
   set_initialize(&Face1, mm);  /* used in CheckAdjacency  */
   OrderVector=(long *)calloc(mm+1, sizeof *OrderVector);
   ComputeRowOrderVector(OrderVector, HyperplaneOrder);
   RecomputeRowOrder=FALSE;
   InitializeBmatrix(InitialRays);
-  for (i = 1; i <= mm; i++){
-    set_addelem(GroundSet, i);
-  }
   RayCount = 0;
   TotalRayCount = 0;
   FeasibleRayCount = 0;
+  WeaklyFeasibleRayCount = 0;
   VertexCount = 0;
   EdgeCount=0; /* active edge count */
   TotalEdgeCount=0; /* active edge count */
-  if (HyperplaneOrder==MaxCutoff||HyperplaneOrder==MinCutoff) PreOrderedRun=FALSE;
 }
 
 void DDMain(void)
 {
+  rowrange i;
+
   Iteration = nn + 1;
   while (Iteration <= mm) {
-    SelectNextHyperplane(HyperplaneOrder, AddedHyperplanes, &hh, &RecomputeRowOrder);
+    SelectNextHyperplane(HyperplaneOrder, WeaklyAddedHyperplanes, &hh, &RecomputeRowOrder);
     if (DynamicWriteOn) {
       fprintf(writing,
-	      "*----------  Iteration =%3ld :   add  row # %3ld ----------\n",
+	     "*----------  Iteration =%3ld :   add  row # %3ld ----------\n",
 	      Iteration, hh);
       printf("*----------  Iteration =%3ld :   add  row # %3ld ----------\n",
 	     Iteration, hh);
     }
-    if (PreOrderedRun) 
-      AddNewHyperplane2(hh);
-    else 
-      AddNewHyperplane1(hh);
-    if (CompStatus==AllFound||CompStatus==RegionEmpty) {
+    if (set_member(hh,NonequalitySet)){  /* Skip the row hh */
+      if (DynamicWriteOn) {
+        fprintf(writing,"*The row # %3ld should be inactive and thus skipped.\n", hh);
+        printf("*The row # %3ld should be inactive and thus skipped.\n", hh);
+      }
+      set_addelem(WeaklyAddedHyperplanes, hh);
+    } else {
+      if (PreOrderedRun)
+        AddNewHyperplane2(hh);
+      else
+        AddNewHyperplane1(hh);
       set_addelem(AddedHyperplanes, hh);
-      goto _L99;
+      set_addelem(WeaklyAddedHyperplanes, hh);
     }
     if (LogWriteOn)
       fprintf(writing_log, "%3ld %5ld %6ld %6ld %6ld\n",
 	      Iteration, hh, TotalRayCount, RayCount, FeasibleRayCount);
-    set_addelem(AddedHyperplanes, hh);
+    if (CompStatus==AllFound||CompStatus==RegionEmpty) {
+      set_addelem(AddedHyperplanes, hh);
+      goto _L99;
+    }
     Iteration++;
   }
   _L99:;
 }
 
 
-void WriteErrorMessages(FILE *f)
-{
-  switch (Error) {
-
-  case LowColumnRank:
-    if (Conversion==IneToExt) {
-      fprintf(f,"*Input Error: Input matrix (b, -A) is not column full rank => no vertices and rays.\n");
-      break;
-    } else {
-      fprintf(f,"*Input Error: Input matrix A is not column full rank.=> no vertices and rays.\n");
-      break;
-    }
- 
-  case DimensionTooLarge:
-    fprintf(f, "*Input Error: Input matrix is too large:\n");
-    fprintf(f, "*Please increase MMAX and/or NMAX in the source code and recompile.\n");
-    break;
-
-  case DependentMarkedSet:
-    fprintf(f, "*Input Error: Marked rows are linearly dependent.\n");
-    fprintf(f, "*Please select independent rows for partial enumeration.\n");
-    break;
-
-  case FileNotFound:
-    fprintf(f, "*Input Error: Specified input file does not exist.\n");
-    break;
-
-  case ImproperInputFormat:
-    if (Number == Rational) {
-     }
-    else {
-      fprintf(f,"*Input Error: Input format is not correct.\n");
-      fprintf(f,"*Format:\n");
-      fprintf(f," begin\n");
-      fprintf(f,"   m   n  NumberType(real, rational or integer)\n");
-      fprintf(f,"   b  -A\n");
-      fprintf(f," end\n");
-    }
-    break;
-
-  case None:
-    fprintf(f,"*No Error found.\n");
-    break;
-  }
-}
 
 void Initialization(int ARGC, char *ARGV[])
 /* Initialization of global variables */
@@ -1233,10 +766,9 @@ void Initialization(int ARGC, char *ARGV[])
 void InitialDataSetup(void)
 {
   long j, r;
-  Arow Vector;
+  Arow Vector1,Vector2;
   rowset ZSet;
 
-  time(&starttime);
   RecomputeRowOrder=FALSE;
   ArtificialRay = NULL;
   FirstRay = NULL;
@@ -1245,18 +777,28 @@ void InitialDataSetup(void)
   AddArtificialRay();
   Iteration = nn;   /*Initially,we have already  nn  hyperplanes */
   set_copy(AddedHyperplanes, InitialHyperplanes);
+  set_copy(WeaklyAddedHyperplanes, InitialHyperplanes);
   UpdateRowOrderVector(InitialHyperplanes);
-  for (r = 0; r < nn; r++) {
-    for (j = 0; j < nn; j++)
-      Vector[j] = InitialRays[j][r];
-    Normalize(Vector);
-    ZeroIndexSet(Vector, ZSet);
-    if (set_subset(MarkedSet, ZSet)){
+  for (r = 1; r <= nn; r++) {
+    for (j = 0; j < nn; j++){
+      Vector1[j] = InitialRays[j][r-1];
+      Vector2[j] = -InitialRays[j][r-1];
+    }
+    Normalize(Vector1);
+    Normalize(Vector2);
+    ZeroIndexSet(Vector1, ZSet);
+    if (set_subset(EqualitySet, ZSet)){
       if (debug) {
         printf("add an initial ray with zero set:");
         set_write(ZSet);
       }
-      AddRay(Vector);
+      AddRay(Vector1);
+      if (InitialRayIndex[r]==0) {
+        AddRay(Vector2);
+        if (debug) {
+          printf("and add its negative also.\n");
+        }
+      }
     }
   }
   CreateInitialEdges();
@@ -1272,7 +814,8 @@ void DDEnumerate(void)
   if (LogWriteOn && writing_log == NULL)
     SetWriteFile(&writing_log, logfile, 'l', "log");
   DDInit();
-  FindInitialRays(InitialHyperplanes, InitialRays, &found);
+  time(&starttime);
+  FindInitialRays(InitialHyperplanes, InitialRays, InitialRayIndex, &found);
   if (found) {
     InitialDataSetup();
     InitialWriting();
@@ -1280,9 +823,81 @@ void DDEnumerate(void)
     WriteDDResult();
     FreeDDMemory();
   } else {
+    WriteDDResult();
     WriteErrorMessages(stdout);
     WriteErrorMessages(writing);
   }
+}
+
+void DecompositionCore(void)
+{
+  DDInit();
+  time(&starttime);
+  FindInitialRays(InitialHyperplanes, InitialRays, InitialRayIndex, &found);
+  if (found) {
+    InitialDataSetup();
+    InitialWriting();
+    DDMain();
+    time(&endtime);
+    WriteDecompResult();
+    FreeDDMemory();
+  } else {
+    time(&endtime);
+    WriteDecompResult();
+    WriteErrorMessages(stdout);
+    WriteErrorMessages(writing);
+  }
+}
+
+void DDRowDecomposition(void)
+{
+  rowrange i,k;
+  long FeasibleRaySum=0;
+  time_t starttime_save;
+  
+  time(&starttime_save);
+  if (RowDecomposition && writing_dex == NULL)
+    SetWriteFile(&writing_dex, dexfile, 'd', "decomposition");
+  if (IncidenceOutput == IncSet && writing_icd == NULL)
+    SetWriteFile(&writing_icd, icdfile, 'i', "incidence");
+  if (AdjacencyOutput != AdjOff && writing_adj == NULL)
+    SetWriteFile(&writing_adj, adjfile, 'a', "adjacency");
+  if (LogWriteOn && writing_log == NULL)
+    SetWriteFile(&writing_log, logfile, 'l', "log");
+  RestrictedEnumeration=TRUE;
+  RelaxedEnumeration=TRUE;
+  for (i = 0; i <= mm; i++) EqualityIndex[i]=0;
+  for (k = 1; k <= mm-nn+2; k++){
+    EqualityIndex[k]=1;   /* Equality for k-th inequality */
+    if (k>=2) EqualityIndex[k-1]=-1;  /* Strict inequality for 1,2,...,(k-1)st inequalities */
+    if (DynamicWriteOn) {
+      fprintf(writing, "* Decomposition problem number =%3ld(/%3ld)\n", k, mm-nn+2);
+      fprintf(stdout, "* Decomposition problem number =%3ld(/%3ld)\n", k, mm-nn+2);
+    }
+    DecompositionCore();
+    FeasibleRaySum=FeasibleRaySum+FeasibleRayCount;
+  }
+  switch (Inequality) {
+  case ZeroRHS:
+    fprintf(writing_dex, "*Total outputs = %8ld  %5ld    real\n",FeasibleRaySum, nn + 1);
+    fprintf(stdout, "*Total outputs = %8ld  %5ld    real\n",FeasibleRaySum, nn + 1);
+    break;
+  case NonzeroRHS:
+    fprintf(writing_dex, "*Total outputs = %8ld  %5ld    real\n", FeasibleRaySum, nn);
+    fprintf(stdout, "*Total outputs = %8ld  %5ld    real\n", FeasibleRaySum, nn);
+    break;
+  }
+  DDInit();
+  for (i = 0; i <= mm; i++) {
+    EqualityIndex[i]=0;
+    set_addelem(AddedHyperplanes,i);
+  }
+  CompileDecompResult();
+  starttime=starttime_save;
+  RestrictedEnumeration=FALSE;
+  RelaxedEnumeration=FALSE;
+  WriteDDResult();
+  FreeDDMemory();
 }
 
 void PreProjection(void)
@@ -1294,13 +909,14 @@ void PreProjection(void)
   colindex pivrow;
   Bmatrix DBinv;  /* dual basis matrix inverse */
   long DBrank;
-  
+ 
   if (IncidenceOutput == IncSet)
     SetWriteFile(&writing_icd, icdfile, 'i', "incidence");
   if (AdjacencyOutput != AdjOff)
     SetWriteFile(&writing_adj, adjfile, 'a', "adjacency");
   if (LogWriteOn)
     SetWriteFile(&writing_log, logfile, 'l', "log");
+  time(&starttime);
   set_initialize(&subrows1,mm);
   set_initialize(&subrows2,mm);
   set_initialize(&DBrows,mm);
@@ -1326,6 +942,7 @@ void PreProjection(void)
     WriteAmatrix(stdout,AA,mm,nn,NonzeroRHS);
     WriteAmatrix(writing,AA,mm,nn,NonzeroRHS);
   }
+  PreOrderedRun=FALSE;
   InitializeBmatrix(DBinv);
   FindBasis(AA,MinIndex,DBrows,pivrow,DBinv,&DBrank);
     /* DBrows stores the rows associated with a dual basis */
@@ -1364,7 +981,7 @@ void PreProjection(void)
     WriteRunningMode(writing);
   }
   DDInit();
-  FindInitialRays(InitialHyperplanes, InitialRays, &found);
+  FindInitialRays(InitialHyperplanes, InitialRays, InitialRayIndex, &found);
   if (found) {
     InitialDataSetup();
     InitialWriting();
@@ -1424,6 +1041,7 @@ void InteriorFindMain(void)
     goto _L99;
   }
   EnlargeAAforInteriorFinding();
+  time(&starttime);
   OBJrow=mm; RHScol=1;
   CrissCrossMaximize(AA, InitialRays, OBJrow, RHScol, 
     &LPStatus, &ov, LPsol, LPdsol,NBIndex, &re, &se, &LPiter);
@@ -1431,15 +1049,6 @@ void InteriorFindMain(void)
   if (DynamicWriteOn)
     WriteLPResult(stdout,LPStatus, ov, LPsol, LPdsol, NBIndex, re, se, LPiter);
 _L99:;
-}
-
-void WriteHeading(void)
-{
-  WriteProgramDescription(stdout);
-  printf("------------------------------------------\n");
-  printf(" Vertex & Extremal Ray Enumeration for\n");
-  printf(" the polyhedron P = { x :  b - A x >= 0 }\n");
-  printf("------------------------------------------\n");
 }
 
 
@@ -1450,19 +1059,26 @@ void main(int argc, char *argv[])
   Initialization(argc, argv);
   AmatrixInput(&inputsuccessful);
 
- /* InitProfile(200,200);                THINK C PROFILER */
- /* cecho2file("cdd profile", 0,stdout); THINK C PROFILER */
- /* _trace=0;                            THINK C PROFILER */
+  /* InitProfile(200,200);                THINK C PROFILER */
+  /* cecho2file("cdd profile", 0,stdout); THINK C PROFILER */
+  /* _trace=0;                            THINK C PROFILER */
 
   if (inputsuccessful) {
     SetWriteFile(&writing,outputfile,'o',"output");
+    if (VerifyInput){
+      SetWriteFile(&writing_ver,verfile,'v',"input verification");
+      WriteSolvedProblem(writing_ver);
+      fclose(writing_ver);
+      if (DynamicWriteOn) printf("closing the file %s\n",verfile);
+     }
     if (DynamicWriteOn) {
       WriteRunningMode(stdout);
       WriteRunningMode(writing);
     }
     switch (Conversion) {
     case ExtToIne: case IneToExt: /* vertex/facets enumeration is chosen */
-      DDEnumerate();
+      if (RowDecomposition) DDRowDecomposition();
+      else DDEnumerate();
       break;
     
     case LPmax:  case LPmin:      /* LP is chosen */
@@ -1488,6 +1104,10 @@ void main(int argc, char *argv[])
     fclose(writing);
     if (DynamicWriteOn) printf("closing the file %s\n",outputfile);
   }
+  if (writing_dex != NULL){
+    fclose(writing_dex);
+    if (DynamicWriteOn) printf("closing the file %s\n",dexfile);
+  }
   if (writing_icd != NULL){
     fclose(writing_icd);
     if (DynamicWriteOn) printf("closing the file %s\n",icdfile);
@@ -1500,8 +1120,8 @@ void main(int argc, char *argv[])
     fclose(writing_log);
     if (DynamicWriteOn) printf("closing the file %s\n",logfile);
   }
-  /* DumpProfile();   THINK C PROFILER */
-  /* exit(0);         THINK C PROFILER */
+  /* DumpProfile();    THINK C PROFILER */
+  /* exit(0);          THINK C PROFILER */
 }
 
 /* end of cdd.c */

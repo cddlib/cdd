@@ -3,7 +3,7 @@ Ternary Alloy Ground State Analysis
   See, Ceder, G., Garbulski, G.D.,  Avis, D. and Fukuda, K., 
   "Ground states of a ternary lattice model with nearest
   and next-nearest neighbor interactions," preprint,
-  Physical Review Bi, to appear in Jan. 1994.
+  Physical Review B, to appear in Jan. 1994.
 This polytope has 4862 vertices.  
 begin 
    729    9    integer
@@ -737,5 +737,5 @@ begin
     0    -8     8     3     2    -5    -4   -32   -12 
     0    -6     2     1     2    -3     1     2   -15 
 end
-mincutoff
+lexmin
 

@@ -3,7 +3,7 @@
 /* setoper.c: 
  * A set operation library 
  * created by Komei Fukuda, Nov.14, 1993
- * modified on Feb. 17, 1994
+ * modified on December 5, 1994
  */
 
 #define SETBITS 32       /* Important Constant: Number of bits in a long integer */
@@ -11,6 +11,25 @@
 #include <stdlib.h>
 
 typedef long *set_type;  /* set type definition */
+
+/* Definitions for optimized set_card function 
+   by David Bremner bremner@cs.mcgill.ca  
+ */
+
+typedef unsigned char set_card_lut_t;
+
+#define LUTBLOCKS(set) (((set[0]-1)/SETBITS+1)*(sizeof(long)/sizeof(set_card_lut_t)))
+
+static unsigned char set_card_lut[]={
+0,1,1,2,1,2,2,3,1,2,2,3,2,3,3,4,1,2,2,3,2,3,3,4,2,3,3,4,3,4,4,5,
+1,2,2,3,2,3,3,4,2,3,3,4,3,4,4,5,2,3,3,4,3,4,4,5,3,4,4,5,4,5,5,6,
+1,2,2,3,2,3,3,4,2,3,3,4,3,4,4,5,2,3,3,4,3,4,4,5,3,4,4,5,4,5,5,6,
+2,3,3,4,3,4,4,5,3,4,4,5,4,5,5,6,3,4,4,5,4,5,5,6,4,5,5,6,5,6,6,7,
+1,2,2,3,2,3,3,4,2,3,3,4,3,4,4,5,2,3,3,4,3,4,4,5,3,4,4,5,4,5,5,6,
+2,3,3,4,3,4,4,5,3,4,4,5,4,5,5,6,3,4,4,5,4,5,5,6,4,5,5,6,5,6,6,7,
+2,3,3,4,3,4,4,5,3,4,4,5,4,5,5,6,3,4,4,5,4,5,5,6,4,5,5,6,5,6,6,7,
+3,4,4,5,4,5,5,6,4,5,5,6,5,6,6,7,4,5,5,6,5,6,6,7,5,6,6,7,6,7,7,8};
+/* End of Definitions for optimized set_card */
 
 long set_blocks(long len);
 void set_initialize(set_type *setp,long len);
@@ -31,5 +50,6 @@ void set_fwrite(FILE *f,set_type set);
 void set_binwrite(set_type set);
 void set_fbinwrite(FILE *f,set_type set);
 
+/* End of File: setoper.h */
 /* End of File: setoper.h */
 

@@ -1,0 +1,23 @@
+* cdd: Double Description Method C-Code:Version C0.55a (December 18, 1994)
+* Copyright (C) 1994, Komei Fukuda, fukuda@dma.epfl.ch
+*Input File:projtest.ine   (  12  x    7)
+*Preprojection is chosen.
+*Computation completed at Iteration   10.
+*Computation starts     at Sun Dec 18 16:02:22 1994
+*            terminates at Sun Dec 18 16:02:22 1994
+*Total processor time = 0 seconds
+*                     = 0 hour 0 min 0 sec
+*FINAL RESULT:
+*Number of Vertices =       0,   Rays =       9
+begin
+        9     13    real
+  0  0  0  0  0  0  1  0  0  0  0  0  1
+  0  1  0  0  0  0  0  0  0  0  0  0  0
+  0  0  1  0  0  0  0  0  0  0  0  0  0
+  0  0  0  1  0  0  0  0  0  0  0  0  0
+  0  0  0  0  0  0  0  1  0  0  0  0  0
+  0  0  0  0  0  0  0  0  1  0  0  0  0
+  0  0  0  0  0  0  0  0  0  1  0  0  0
+  0  0  0  0  1  0  0  0  0  0  1  0  0
+  0  0  0  0  0  1  0  0  0  0  0  1  0
+end

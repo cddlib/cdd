@@ -2,6 +2,8 @@
 *cdd LP Solver (Criss-Cross Method) Result
 *cdd input file : lpmintest.ine   ( 120  x    5)
 *minimization is chosen.
+*Objective function is
+  0 +  1 X[  1] +  1 X[  2] +  1 X[  3] +  1 X[  4]
 *LP status: a dual pair (x, y) of optimal solutions found.
 begin
   primal_solution
@@ -17,3 +19,7 @@ begin
   optimal_value : -5.236067982E+00
 end
 *number of pivot operations = 4
+*Computation starts     at Sun Dec 18 16:01:53 1994
+*            terminates at Sun Dec 18 16:01:53 1994
+*Total processor time = 0 seconds
+*                     = 0 hour 0 min 0 sec
