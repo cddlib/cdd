@@ -1,4 +1,4 @@
-1994-12-05
+1995-08-29
 -----------------------
 PROGRAM cdd README FILE
 -----------------------
@@ -16,17 +16,21 @@ one can move back and forth between an inequality representation
 and a generator (i.e. vertex and ray) representation of a polyhedron
 with cdd.
 
-The cdd package is in "tar"ed and "compress"ed format with name
-cdd-***.tar.Z, where *** is the version number.  The standard
+The cdd package is in "tar"ed and "gzip"ed format with name
+cdd-***.tar.gz, where *** is the version number.  The standard
 anonymous ftp site for the package is
 
-     ftp site : ftp.efpl.ch (128.178.139.3)
-     directory: incoming/dma
-     file name: cdd-***.tar.Z
+     ftp site : ifor13.ethz.ch (129.132.154.13)
+     directory: pub/fukuda/cdd
+     file name: cdd+-***.tar.gz
+
+The old ftp site: ftp.efpl.ch (128.178.139.3) directory: incoming/dma
+is no more valid and please do not use this site although
+some of the old items are still there.
 
 In order to unpack the package in a standard unix environment, type 
    
-     % uncompress cdd-***.tar.Z
+     % gunzip cdd-***.tar.gz
      % tar xvf cdd-***.tar
 
 where *** must be replaced by the appropriate version number, and
@@ -83,9 +87,17 @@ the subspace of any subset of variables.  The program domcheck
 can be obtained from the same ftp site above. Note that
 one needs the additional commercial program CPLEX to run domcheck.
 
+The program cdd is free software, but if cdd turns out to be useful, 
+please kindly send to me (at the address below) a note or a paper mentioning 
+for what purpose and how cdd has been used. The most powerful support 
+for free software development is user's appreciation.   
+
 For more information, contact
    Komei Fukuda
-   fukuda@dma.epfl.ch  or  fukuda@gssm.otsuka.tsukuba.ac.jp
-   EPFL, Lausanne, Switzerland, and
-   University of Tsukuba, Tokyo, Japan
+   fukuda@ifor.math.ethz.ch
+   Institut fur Operations Research
+   ETH Zentrum, CH-8092 Zurich, Switzerland
+   fax +41-1-632 1025   tel +41-1-632 4023 or 4028
+
+// END of cdd.readme
 

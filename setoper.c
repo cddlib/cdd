@@ -3,13 +3,25 @@
  * created by Komei Fukuda, Nov.14, 1993
  * modified on December 5, 1994 
    (set_card function replaced with a better code by David Bremner) 
+ * last modified on March 16, 1995 
  */
 
 #include "setoper.h"
 
+static unsigned char set_card_lut[]={
+0,1,1,2,1,2,2,3,1,2,2,3,2,3,3,4,1,2,2,3,2,3,3,4,2,3,3,4,3,4,4,5,
+1,2,2,3,2,3,3,4,2,3,3,4,3,4,4,5,2,3,3,4,3,4,4,5,3,4,4,5,4,5,5,6,
+1,2,2,3,2,3,3,4,2,3,3,4,3,4,4,5,2,3,3,4,3,4,4,5,3,4,4,5,4,5,5,6,
+2,3,3,4,3,4,4,5,3,4,4,5,4,5,5,6,3,4,4,5,4,5,5,6,4,5,5,6,5,6,6,7,
+1,2,2,3,2,3,3,4,2,3,3,4,3,4,4,5,2,3,3,4,3,4,4,5,3,4,4,5,4,5,5,6,
+2,3,3,4,3,4,4,5,3,4,4,5,4,5,5,6,3,4,4,5,4,5,5,6,4,5,5,6,5,6,6,7,
+2,3,3,4,3,4,4,5,3,4,4,5,4,5,5,6,3,4,4,5,4,5,5,6,4,5,5,6,5,6,6,7,
+3,4,4,5,4,5,5,6,4,5,5,6,5,6,6,7,4,5,5,6,5,6,6,7,5,6,6,7,6,7,7,8};
+/* End of Definitions for optimized set_card */
+
 long set_blocks(long len)
 {
-	unsigned long blocks;
+	long blocks;
 	
 	blocks=(len-1)/SETBITS+2;
 	return blocks;
@@ -21,7 +33,7 @@ void set_initialize(set_type *setp, long len)
 	long i,forlim1;
 	
 	forlim1=set_blocks(len);
-	*setp=(unsigned long *) calloc(forlim1, sizeof i);
+	*setp=(long *) calloc(forlim1, sizeof i);
 	(*setp)[0]=len;  /* size of the ground set */
 	for (i=1; i<forlim1; i++)
 		(*setp)[i]=0;
@@ -75,7 +87,7 @@ void set_delelem(set_type set, long elem)
 {
 	long  i,j;
 	long change;
-	unsigned long one=1;	 
+	long one=1;	 
 	
 	if (elem<=set[0])
 	{
@@ -145,7 +157,7 @@ int set_member(long elem, set_type set)
 	int  yes=0;
 	long  i,j;
 	long testset;
-	unsigned long one=1;	 
+	long one=1;	 
 	
 	if (elem<=set[0])
 	{
@@ -162,7 +174,7 @@ long set_card(set_type set)
 /* set cardinality, modified by David Bremner bremner@cs.mcgill.ca
    to optimize for speed. */
 {
-  unsigned long block,car=0;
+  long block,car=0;
   set_card_lut_t *p;
   
   p=(set_card_lut_t *)&set[1];

@@ -1,7 +1,7 @@
 % The name of this file: cddman.tex
 % written by by Komei Fukuda
 % December 14, 1993
-% Revised December 18, 1994
+% Revised August 7, 1995
 %
 \documentstyle[11pt]{article}
 \renewcommand{\baselinestretch}{1.0}
@@ -22,22 +22,22 @@
 
 \vspace{20mm}
 
-{\LARGE cdd User Manual}
+{\LARGE cdd Reference Manual}
 
 \vspace{20mm}
 
 {\Large Komei Fukuda\\
-   EPFL, Lausanne, Switzerland\\
-   fukuda@dma.epfl.ch\\
+   ETH Zentrum, Z\"urich, Switzerland\\
+   fukuda@ifor.math.ethz.ch\\
    and\\
    University of Tsukuba, Tokyo, Japan\\
   fukuda@gssm.otsuka.tsukuba.ac.jp
 }
 
 \vspace{20mm}
-{\Large (cdd Version 0.55a,  December 18, 1994)}
+{\Large (cdd Version 0.56,  August 7, 1995)}
 
-{\Large (Manual  Version  December 18, 1994)}
+{\Large (Manual  Version  August 7, 1995)}
 
 \end{center}
 
@@ -47,16 +47,16 @@
 
 \begin{center}
 
-{\Large cdd User Manual}
+{\Large cdd Reference Manual}
 
 \bigskip
 {\large Komei Fukuda\\
-   fukuda@dma.epfl.ch  or  fukuda@gssm.otsuka.tsukuba.ac.jp\\
-   EPFL, Lausanne, Switzerland, and\\
+   fukuda@ifor.math.ethz.ch  or  fukuda@gssm.otsuka.tsukuba.ac.jp\\
+   ETH Zentrum, Z\"urich, Switzerland, and\\
    University of Tsukuba, Tokyo, Japan}
 
 \bigskip
-{\large (cdd Version 0.55a,  December 18, 1994)}
+{\large (cdd Version 0.56,  August 7, 1995)}
 
 \end{center}
 
@@ -158,6 +158,13 @@ I will not take any responsibility of any problems you might have
 with this program.  But I will be glad to receive bug reports or suggestions
 at the e-mail addresses above. 
 
+Finally, if cdd turns out to be useful, 
+please kindly send to me a note or a paper mentioning 
+for what purpose and how cdd has been used. 
+The most powerful support for free software development
+is user's appreciation.
+ 
+
 \section{Polyhedra Input and Output Format} \label{FORMAT}
 \bigskip
 Polyhedra input format is quite simple:
@@ -239,16 +246,16 @@ After you run cdd with this input file, you will get
 an output file, say ucube.ext, which looks like:
 
 \begin{verbatim}
-* cdd: Double Description Method C-Code:Version C0.55 (December 5, 1994)
-* Copyright (C) 1994, Komei Fukuda, fukuda@dma.epfl.ch
+* cdd: Double Description Method C-Code:Version C0.56 (August 7, 1995)
+* Copyright (C) 1995, Komei Fukuda, fukuda@ifor.math.ethz.ch
 *Input File:ucube.ine   (   5  x    4)
 *HyperplaneOrder: LexMin
 *Degeneracy preknowledge for computation: None (possible degeneracy)
 *Vertex/Ray enumeration is chosen.
-*Computation starts     at Sat Dec  5 14:44:01 1994
-*            terminates at Sat Dec  5 14:44:01 1994
-*Total processor time = 0 seconds
-*                     = 0 hour 0 min 0 sec
+*Computation starts     at Mon Aug  7 18:34:43 1995
+*            terminates at Mon Aug  7 18:34:44 1995
+*Total processor time = 1 seconds
+*                     = 0 hour 0 min 1 sec
 *FINAL RESULT:
 *Number of Vertices =       4,   Rays =       1
 begin
@@ -359,11 +366,11 @@ the previous section, the program outputs the following ucube.icd file:
 *cdd output file: ucube.ext
 begin
        5    5    6
-       3    1    4    5
-       3    3    4    5
-       3    2    3    5
-       3    1    2    5
-      -1    5
+ 3 :  1 4 5
+ 3 :  3 4 5
+ 3 :  2 3 5
+ 3 :  1 2 5
+ -1 :  5
 end
 \end{verbatim}
 After ^^ ^^ begin", there are three numbers $5 \quad 5 \quad 6$.
@@ -381,21 +388,27 @@ there are more incident inequalities than non-incident ones, then the program
 outputs the list of non-incident inequalities with its
 size with negative sign.  This is to save space of output.
 
-For example, the first output line $3 \quad 1 \quad 4 \quad 5$ 
+For example, the first output line $3 \; : \;1 \; 4 \; 5$ 
 corresponds to the
 first vertex of ucube.ext file in previous section, that is, 
 the vertex $(2, 1, 1)$.  The first number $3$ is simply the number
 of incident inequalities and the rest is the indices of
 those inequalities, and so the 1st, 4th and 5th inequalities are
 satisfied by equality at this vertex.   The last output
-$-1 \quad 5$ corresponds to the ray  $(0,0,1)$.  Since all inequalities
+$-1 \; : \; 5$ corresponds to the ray  $(0,0,1)$.  Since all inequalities
 except the last (5th) inequality are incident with this ray,
 the output is the complementary list with its cardinality (=1) with negative
-sign.  Note that the original list is $5 \quad 1 \: 2 \: 3 \: 4 \: 6$, where
+sign.  Note that the full list is $5 \; : \; 1 \; 2 \; 3 \; 4 \; 6$, where
 $6$ is the infinity plane.  One can ignore the infinity
 plane for some purposes,  but for analyzing the combinatorial 
 structure of polyhedra, it is
 very important information.
+
+Notice that the format of incidence file has been slightly changed.
+Up to the version 0.55 (and up to version 0.72 of cdd+), 
+cdd (cdd+) did not output a colon ^^ ^^ :" after
+the cardinality of incidence.  This change is to make the incidence
+file more readable.  We shall try not to change this new output format.
 
 The {\bf \#incidence} option can be used when you do not wish
 to output the incidence file but to output only the cardinality of incidence
@@ -732,11 +745,11 @@ read any RATIONAL numbers ($a/b$ type with $a$, $b$ integers).
 \end{itemize}
 
 \section{FTP site}  \label{FTP}
-An anonymous ftp site for the programs is set at EPFL:
+An anonymous ftp site for the programs is set at:
 \begin{verbatim}
-   ftpsite:  ftp.epfl.ch (128.178.139.3)
-   directory: incoming/dma
-   filename: cdd-***.tar.Z
+   ftpsite:  ifor13.ethz.ch (129.132.154.13)
+   directory: pub/fukuda/cdd
+   filename: cdd-***.tar.gz
 \end{verbatim}
 Since the file is compressed binary file, it is necessary to use binary mode for
 file transfer.

@@ -14,17 +14,17 @@ begin
     2 :   0
     3 :   0
     4 :   0
-    5 :   2.618033990E+00
+    5 :   2.618033989E+00
   dual_solution
    60 :   5.000000000E-01
    46 :   0
    62 :   0
     1 :   0
    58 :   5.000000000E-01
-  optimal_value :  2.618033990E+00
+  optimal_value :  2.618033989E+00
 end
 *number of pivot operations = 255
-*Computation starts     at Sun Dec 18 16:01:50 1994
-*            terminates at Sun Dec 18 16:01:50 1994
+*Computation starts     at Tue Aug 29 15:16:19 1995
+*            terminates at Tue Aug 29 15:16:19 1995
 *Total processor time = 0 seconds
 *                     = 0 hour 0 min 0 sec

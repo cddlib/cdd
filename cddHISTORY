@@ -1,6 +1,7 @@
-cdd HISTORY file
+cdd & cdd+ HISTORY file
 
-cdd version (date) / changes
+
+*** cdd version (date) / changes ***
 
 Version C0.21 (November 10, 1993) /
  - The first version of cdd created by translating pdd.p (0.21) with 
@@ -190,6 +191,45 @@ Version C0.55 (December 5, 1994) /
    recommended to use.  Some newly found (minor) bugs are fixed.
 
 Version C0.55a (December 18, 1994) /
-   The broken "preprojection" option in Version 0.55a is fixed.
+   The broken "preprojection" option in Version 0.55 is fixed.
+
+Version C0.56 (August 7, 1995) /
+   Some compilation problem associated with incompatible set_type
+   variables in setoper.c is fixed.  Various minor bugs are fixed.
+   The output format of incidence file is slightly modified. (See
+   the Reference Manual cddman.tex).
+
+
+*** cdd+ version (date) / changes ***
+
+ccd+ Version 0.70 (April 3, 1995) /
+   The first C++ version of cdd which can run on both floating-point
+   and rational (exact) arithmetics.  The basic functions are
+   identical to cdd-055.  This version requires GNU gcc compilers
+   (2.6.0 or higher) and a compatible g++lib.
+
+
+ccd+ Version 0.71 (April 15, 1995) /
+   Two new functions (through options) are added.  The option 
+   "facet_listing" checks whether each input inequality determines
+   a facet or not.  The second option "tope_listing" generates
+   all full-dimensional regions (topes) of the associated
+   arrangement of hyperplanes by reverse search algorithm. 
+   Also, the option "show_tableau" is added to illustrate
+   how the criss-cross method works in the tableau (dictornary)
+   form.  Criss-cross LP solver is now sensitive to ordering
+   options, lexmin, minindex, radom, etc.
+
+ccd+ Version 0.72 (April 16, 1995) /
+   The option "postanalysis" is added. This option is to be used 
+   after *.ext file is obtained.  When this option is set
+   with adjacency and/or incidence options, one can get
+   adjacency and incidence files from both *.ine and *.ext
+   files.  Thus it is not necessary to generate *.adj and *.icd
+   files together with *.ext file. 
+
+ccd+ Version 0.72a (April 16, 1995) /
+   Cycling bug of Version 072 of LP maximize and minimize has been 
+   fixed.
 
 --- end of file: cddHISTORY ---

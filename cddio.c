@@ -1,6 +1,6 @@
 /* cddio.c:  Basic Input and Output Procedures for cdd.c
-   written by Komei Fukuda, fukuda@dma.epfl.ch
-   Version 0.55a, December 18, 1994 
+   written by Komei Fukuda, fukuda@ifor.math.ethz.ch
+   Version 0.56, August 7, 1995
 */
 
 /* cdd.c : C-Implementation of the double description method for
@@ -10,7 +10,7 @@
    the manual cddman.tex for detail.
 */
 
-#include "setoper.h"  /* set operation library header (Ver. Jan.23 ,1994 or later) */
+#include "setoper.h"  /* set operation library header (Ver. March 16,1995 or later) */
 #include "cdddef.h"
 #include "cdd.h"
 #include <stdio.h>
@@ -189,7 +189,17 @@ void ProcessCommandLine(char *line)
     return;
   }
   if (strncmp(line, "adjacency", 9)==0) {
-    AdjacencyOutput = OutputAdjacency;
+    AdjacencyOutput = AdjacencyList;
+    return;
+  }
+  if (strncmp(line, "#adjacency", 10)==0) {
+    AdjacencyOutput = AdjacencyDegree;
+    fscanf(reading,"%ld", &msize);
+    set_initialize(&CheckPoints, minput+1);
+    for (j=1;j<=msize;j++) {
+      fscanf(reading,"%ld",&var);
+      if (var <= minput+1) set_addelem(CheckPoints,var);
+    }
     return;
   }
 /*  algebraic option is not efficient in most cases and deleted from Version 051 */
@@ -523,7 +533,7 @@ void WriteRayRecord(FILE *f, RayRecord *RR)
     }
   }
   if (IncidenceOutput==IncCardinality) {
-    fprintf(f," %4ld", set_card(RR->ZeroSet));
+    fprintf(f," : %1ld", set_card(RR->ZeroSet));
   }
   putc('\n', f);
 }
@@ -635,7 +645,7 @@ void WriteSetElements(FILE *f, long *S)
 
   for (i = 1; i <= mm; i++) {
     if (set_member(i, S))
-      fprintf(f, " %4ld", i);
+      fprintf(f, " %1ld", i);
   }
 }
 
@@ -649,16 +659,16 @@ void WriteIncidence(FILE *f, RayRecord *RR)
   switch (IncidenceOutput) {
 
   case IncCardinality:
-    fprintf(f, "%8ld", zcar);
+    fprintf(f, " : %1ld", zcar);
     break;
 
   case IncSet:
     if (mm - zcar >= zcar) {
-      fprintf(f, "%8ld", zcar);
+      fprintf(f, " %1ld : ", zcar);
       WriteSetElements(f, RR->ZeroSet);
     } else {
       set_diff(cset, GroundSet, RR->ZeroSet);
-      fprintf(f, "%8ld", zcar - mm);
+      fprintf(f, " %1ld : ", zcar - mm);
       WriteSetElements(f, cset);
     }
     break;
@@ -688,7 +698,7 @@ void WriteProgramDescription(FILE *f)
 
 void WriteRunningMode(FILE *f)
 {
-  if (Conversion==IneToExt || Conversion==ExtToIne){ 
+  if (Conversion==IneToExt || Conversion==ExtToIne || Conversion==Projection){ 
     switch (HyperplaneOrder) {
 
     case MinIndex:
@@ -878,6 +888,63 @@ void WriteTimes(FILE *f)
 }
 
 
+void WriteAdjacencyDegree(FILE *f)
+{
+  RayRecord *RayPtr1, *RayPtr2;
+  long pos1, pos2, deg, feasdeg, icd, feasicd;
+  double totaldeg=0.0, totalfeasdeg=0.0, totalfeasicd=0.0, averfeasicd, averdeg, averfeasdeg;
+  boolean adj;
+
+  switch (Conversion) {
+  case IneToExt:
+    fprintf(f,"*Adjacency Degree of output (=vertices/rays)\n");
+    fprintf(f,"*vertex/ray#, icd#, curr icd#, adj#, feas adj#\n");
+    break;
+  case ExtToIne:
+    fprintf(f,"*Adjacency Degree of output (=inequalities=facets)\n");
+    fprintf(f,"*facet#, icd#, curr icd#, adj#, feas adj#\n");
+    break;
+
+  default:
+    break;
+  }
+  fprintf(f, "*cdd input file : %s   (%4ld  x %4ld)\n",
+	  inputfile, minput, ninput);
+  fprintf(f, "*At iteration =  %ld\n", Iteration);  
+  fprintf(f,"begin\n");
+  fprintf(f,"  %ld\n",RayCount);
+  if (RayCount==0){
+    goto _L99;
+  }
+  LastRay->Next=NULL;
+  for (RayPtr1=FirstRay, pos1=1;RayPtr1 != NULL; RayPtr1 = RayPtr1->Next, pos1++){
+    for (RayPtr2=FirstRay, pos2=1,deg=0,feasdeg=0;RayPtr2 != NULL; RayPtr2 = RayPtr2->Next, pos2++){
+      if (RayPtr1!=RayPtr2){
+        CheckAdjacency2(&RayPtr1, &RayPtr2, &adj);
+        if (adj) {
+          deg++;
+          if (RayPtr2->feasible) feasdeg++;
+        }
+      }
+    }
+    if (RayPtr1->feasible) fprintf(f," f"); else fprintf(f," i");
+    icd = set_card(RayPtr1->ZeroSet);
+    set_int(Face, RayPtr1->ZeroSet, AddedHyperplanes);
+    feasicd = set_card(Face);
+    totalfeasicd = totalfeasicd + feasicd;
+    totalfeasdeg = totalfeasdeg + feasdeg;
+    totaldeg = totaldeg + deg;
+    fprintf(f," %4ld %4ld %4ld %4ld %4ld", pos1,icd, feasicd,deg, feasdeg);
+    fprintf(f,"\n");
+  }
+  fprintf(f,"end\n");
+  averfeasicd = totalfeasicd / (double) RayCount;
+  averdeg = totaldeg / (double) RayCount;
+  averfeasdeg = totalfeasdeg / (double) RayCount;
+  fprintf(f,"*average (curr icd#, adj#, feasible adj#) = %5.2f %5.2f %5.2f\n\n", averfeasicd, averdeg, averfeasdeg);
+_L99:;
+}
+
 void WriteAdjacency(FILE *f)
 {
   RayRecord *RayPtr1, *RayPtr2;
@@ -888,11 +955,11 @@ void WriteAdjacency(FILE *f)
   headnode=NULL; tailnode=NULL;
   switch (Conversion) {
   case IneToExt:
-    if (AdjacencyOutput==OutputAdjacency)
+    if (AdjacencyOutput==AdjacencyList)
       fprintf(f,"*Adjacency List of output (=vertices/rays)\n");
     break;
   case ExtToIne:
-    if (AdjacencyOutput==OutputAdjacency)
+    if (AdjacencyOutput==AdjacencyList)
       fprintf(f,"*Adjacency List of output (=inequalities=facets)\n");
       break;
 
@@ -1263,7 +1330,7 @@ void WriteLPResult(FILE *f, LPStatusType LPS, double optval,
   if (Conversion==LPmax||Conversion==LPmin){
     fprintf(f,"*Objective function is\n");  
     for (j=0; j<nn; j++){
-      if (j>0 && LPcost[j]>=0 ) fprintf(f," +",j);
+      if (j>0 && LPcost[j]>=0 ) fprintf(f," +");
       if (j>0 && (j % 5) == 0) fprintf(f,"\n");
       WriteReal(f, LPcost[j]);
       if (j>0) fprintf(f," X[%3ld]",j);

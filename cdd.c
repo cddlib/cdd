@@ -1,7 +1,7 @@
 /* cdd.c: Main program of the sofware cdd
-   written by Komei Fukuda, fukuda@dma.epfl.ch
-   Version 0.55a, December 18, 1994
-   Standard ftp site: ftp.epfl.ch,  Directory: incoming/dma
+   written by Komei Fukuda, fukuda@ifor.math.ethz.ch
+   Version 0.56, August 7, 1995
+   Standard ftp site: ifor13.ethz.ch(129.132.154.13), Directory: pub/fukuda/cdd
 */
 
 /* cdd : C-Implementation of the double description method for
@@ -32,7 +32,7 @@
 */
 
 #include "setoper.h" 
-  /* set operation library header (Dec 5, 1994 version or later) */
+  /* set operation library header (March 16, 1995 version or later) */
 #include "cdddef.h"
 #include "cdd.h"
 #include <stdio.h>
@@ -49,7 +49,7 @@ long mm, nn;   /*size of the homogenous system to be solved by dd*/
 long projdim;  /*dimension of orthogonal preprojection */
 colset projvars;   /*set of variables spanning the space of preprojection, 
      i.e. the remaining variables are to be removed*/
-rowset EqualitySet, NonequalitySet, GroundSet, Face, Face1;
+rowset EqualitySet, NonequalitySet, GroundSet, Face, Face1, CheckPoints;
 rowrange Iteration, hh;
 rowindex OrderVector;  /* the permutation vector to store a preordered row indeces */
 rowindex EqualityIndex;  
@@ -419,7 +419,6 @@ void LineShellingOrder(rowindex OV, double *z, double *d)
     if (beta!=NULL) free(beta);
     beta=(double *)calloc(mm, sizeof *beta);
     /* initialize only for the first time or when last mm is smaller */
-    if (localdebug) printf("Initialize the component beta[%ld],\n", i-1);
     mlast=mm;
   }
   for (i=1; i<= mm; i++) beta[i-1]=AA[i-1][0]; /* store the first column in beta */
@@ -437,13 +436,13 @@ void LineShellingOrder(rowindex OV, double *z, double *d)
   }
   if (localdebug) 
     for (i=1; i<= mm; i++){
-      printf("set AA[%ld] = %lg\n", i, AA[i-1][0]);
+      printf("set AA[%ld] = %g\n", i, AA[i-1][0]);
     }
   QuickSort(OV, 1, mm, AA, 1);
   for (i=1; i<= mm; i++) {
     AA[i-1][0]=beta[i-1]; 
      /* restore the first column of AA */ 
-    if (localdebug) printf("restore AA[%ld] with %lg\n", i, AA[i-1][0]);
+    if (localdebug) printf("restore AA[%ld] with %g\n", i, AA[i-1][0]);
   }
 }
 
@@ -464,7 +463,7 @@ void RandomPermutation(rowindex OV, long t, unsigned int seed)
     u=r/rand_max;
     xk=j*u +1;
     k=xk;
-    if (localdebug) printf("u=%lg, k=%ld, r=%lg, randmax= %lg\n",u,k,r,rand_max);
+    if (localdebug) printf("u=%g, k=%ld, r=%g, randmax= %g\n",u,k,r,rand_max);
     ovj=OV[j];
     OV[j]=OV[k];
     OV[k]=ovj;
@@ -529,7 +528,7 @@ void UpdateRowOrderVector(long *PriorityRows)
 in highest order.
 */
 {
-  rowrange i,j,k,i1,j1,oj;
+  rowrange i,j,k,j1=0,oj=0;
   long rr;
   boolean found, localdebug=FALSE;
   
@@ -625,7 +624,7 @@ void CompileDecompResult(void)
   long i,j,k;
   double value;
   long mray,nray;
-  char numbtype[wordlenmax],command[wordlenmax],line[linelenmax];
+  char numbtype[wordlenmax],command[wordlenmax];
   static double *vec;
   static long mprev=0;
   boolean localdebug=FALSE;
@@ -677,8 +676,6 @@ _L99:;
 
 void DDInit(void)
 {
-  long i;
-
   Error=None;
   CompStatus=InProgress;
   SetInequalitySets(EqualityIndex);
@@ -702,8 +699,6 @@ void DDInit(void)
 
 void DDMain(void)
 {
-  rowrange i;
-
   Iteration = nn + 1;
   while (Iteration <= mm) {
     SelectNextHyperplane(HyperplaneOrder, WeaklyAddedHyperplanes, &hh, &RecomputeRowOrder);
@@ -730,7 +725,9 @@ void DDMain(void)
     }
     if (LogWriteOn)
       fprintf(writing_log, "%3ld %5ld %6ld %6ld %6ld\n",
-	      Iteration, hh, TotalRayCount, RayCount, FeasibleRayCount);
+        Iteration, hh, TotalRayCount, RayCount, FeasibleRayCount);
+    if (AdjacencyOutput==AdjacencyDegree && set_member(Iteration,CheckPoints))
+      WriteAdjacencyDegree(writing_adj);
     if (CompStatus==AllFound||CompStatus==RegionEmpty) {
       set_addelem(AddedHyperplanes, hh);
       goto _L99;
@@ -909,14 +906,14 @@ void PreProjection(void)
   colindex pivrow;
   Bmatrix DBinv;  /* dual basis matrix inverse */
   long DBrank;
- 
+  
+  time(&starttime);
   if (IncidenceOutput == IncSet)
     SetWriteFile(&writing_icd, icdfile, 'i', "incidence");
   if (AdjacencyOutput != AdjOff)
     SetWriteFile(&writing_adj, adjfile, 'a', "adjacency");
   if (LogWriteOn)
     SetWriteFile(&writing_log, logfile, 'l', "log");
-  time(&starttime);
   set_initialize(&subrows1,mm);
   set_initialize(&subrows2,mm);
   set_initialize(&DBrows,mm);

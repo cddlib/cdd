@@ -1,6 +1,6 @@
 /* cddarith.c:  Floating Point Arithmetic Procedures for cdd.c
-   written by Komei Fukuda, fukuda@dma.epfl.ch
-   Version 0.55a, December 18, 1994 
+   written by Komei Fukuda, fukuda@ifor.math.ethz.ch
+   Version 0.56, August 7, 1995 
 */
 
 /* cdd.c : C-Implementation of the double description method for
@@ -10,7 +10,7 @@
    the manual cddman.tex for detail.
 */
 
-#include "setoper.h"  /* set operation library header (Ver. Jan.23 ,1994 or later) */
+#include "setoper.h"  /* set operation library header (Ver. March 16,1995 or later) */
 #include "cdddef.h"
 #include "cdd.h"
 #include <stdio.h>

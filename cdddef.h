@@ -1,6 +1,6 @@
 /* cdddef.h:  Definition file for cdd.c 
-   written by Komei Fukuda, fukuda@dma.epfl.ch
-   Version 0.55a  December 18, 1994
+   written by Komei Fukuda, fukuda@ifor.math.ethz.ch
+   Version 0.56  August 7, 1995
 */
 
 /* cdd.c : C-Implementation of the double description method for

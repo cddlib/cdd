@@ -1,6 +1,6 @@
 /* cdd.h: Header file for cdd.c 
-   written by Komei Fukuda, fukuda@dma.epfl.ch
-   Version 0.55a, December 18, 1994 
+   written by Komei Fukuda, fukuda@ifor.math.ethz.ch
+   Version 0.56, August 7, 1995
 */
 
 /* cdd.c : C-Implementation of the double description method for
@@ -10,8 +10,8 @@
    the manual cddman.tex for detail.
 */
 
-#define COPYRIGHT   "Copyright (C) 1994, Komei Fukuda, fukuda@dma.epfl.ch"
-#define DDVERSION   "Version C0.55a (December 18, 1994)"
+#define COPYRIGHT   "Copyright (C) 1995, Komei Fukuda, fukuda@ifor.math.ethz.ch"
+#define DDVERSION   "Version C0.56 (August 7, 1995)"
 #include <time.h>
 
 typedef char boolean;
@@ -71,7 +71,7 @@ typedef enum {
 } IncidenceOutputType;
 
 typedef enum {
-  AdjOff=0, OutputAdjacency, InputAdjacency, IOAdjacency
+  AdjOff=0, AdjacencyList,  AdjacencyDegree
 } AdjacencyOutputType;
 
 typedef enum {
@@ -97,7 +97,7 @@ extern long mm, nn;   /*size of the homogenous system to be solved by dd*/
 extern long projdim;  /*dimension of orthogonal preprojection */
 extern colset projvars;   /*set of variables spanning the space of preprojection, 
      i.e. the remaining variables are to be removed*/
-extern rowset EqualitySet, NonequalitySet, GroundSet, Face, Face1;
+extern rowset EqualitySet, NonequalitySet, GroundSet, Face, Face1, CheckPoints;
 extern rowrange Iteration, hh;
 extern rowindex OrderVector;
 extern rowindex EqualityIndex;  
@@ -224,12 +224,18 @@ void SelectPreorderedNext(long *excluded, rowindex, rowrange *hnext);
 void AddNewHyperplane1(rowrange);
 void AddNewHyperplane2(rowrange);
 void WriteAdjacency(FILE *);
+void WriteAdjacencyDegree(FILE *);
 void WriteRunningMode(FILE *);
 void WriteRunningMode2(FILE *);
 void WriteCompletionStatus(FILE *);
 void WriteTimes(FILE *);
-void WriteProgramDescription(FILE *f);
-void WriteSolvedProblem(FILE *f);
-
+void WriteProgramDescription(FILE *);
+void WriteSolvedProblem(FILE *);
+void InitialWriting(void);
+void WriteDDResult(void);
+void WriteErrorMessages(FILE *);
+void WriteDecompResult(void);
+void WriteProjResult(long *);
+void WriteHeading(void);
 
 /* end of cdd.h */

@@ -1,14 +1,14 @@
-* cdd: Double Description Method C-Code:Version C0.55a (December 18, 1994)
-* Copyright (C) 1994, Komei Fukuda, fukuda@dma.epfl.ch
-*Input File:partialtest1.ine   (  12  x    7)
+* cdd: Double Description Method C-Code:Version C0.56 (August 7, 1995)
+* Copyright (C) 1995, Komei Fukuda, fukuda@ifor.math.ethz.ch
+*Input File:partialtest.ine   (  12  x    7)
 *HyperplaneOrder: LexMin
 *Degeneracy preknowledge for computation: None (possible degeneracy)
 *Vertex/Ray enumeration is chosen.
 *The equality option is chosen.
-* => Permanently active rows are:    1   12
+* => Permanently active rows are: 1 12
 *Computation completed at Iteration   12.
-*Computation starts     at Sun Dec 18 16:01:55 1994
-*            terminates at Sun Dec 18 16:01:55 1994
+*Computation starts     at Tue Aug 29 15:16:24 1995
+*            terminates at Tue Aug 29 15:16:24 1995
 *Total processor time = 0 seconds
 *                     = 0 hour 0 min 0 sec
 *FINAL RESULT:
