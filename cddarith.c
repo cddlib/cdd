@@ -1,10 +1,10 @@
 /* cddarith.c:  Floating Point Arithmetic Procedures for cdd.c
    written by Komei Fukuda, fukuda@dma.epfl.ch
-   Version 0.51c, March 15, 1994 
+   Version 0.52b, March 29, 1994 
 */
 
 /* cdd.c : C-Implementation of the double description method for
-   computing all vertices and extremal rays of the polyhedron 
+   computing all vertices and extreme rays of the polyhedron 
    P= {x :  b - A x >= 0}.  
    Please read COPYING (GNU General Public Licence) and
    the manual cddman.tex for detail.
@@ -273,7 +273,7 @@ void AmatrixInput(boolean *successful)
         else
           AA[mm - 1][j - 1] = 0.0;
       }
-    } else{
+    } else {
       mm = minput;
     }
     break;
@@ -393,6 +393,7 @@ void StoreRay(double *p, RayRecord *RR, boolean *feasible)
     }
   }
   RR->FirstInfeasIndex=fii;
+  RR->feasible = *feasible;
   if (debug) printf("store ray with fii= %ld\n", fii);
 }
 
@@ -559,7 +560,8 @@ void ConditionalAddEdge(RayRecord *Ray1, RayRecord *Ray2, RayRecord *ValidFirstR
         NewEdge->Ray1=Rmax;  /* save the one remains in iteration fmin in the first */
         NewEdge->Ray2=Rmin;  /* save the one deleted in iteration fmin in the second */
         NewEdge->Next=NULL;
-        EdgeCount++;
+        EdgeCount++; 
+        TotalEdgeCount++;
         if (Edges[fmin]==NULL){
           Edges[fmin]=NewEdge;
           if (localdebug) printf("Create a new edge list of %ld\n", fmin);
@@ -609,7 +611,7 @@ void UpdateEdges(RayRecord *RRbegin, RayRecord *RRend)
   RayRecord *Ptr1, *Ptr2begin, *Ptr2;
   rowrange fii1;
   boolean ptr2found,quit,localdebug=FALSE;
-  long count=0,pos1,pos2;
+  long count=0,pos1, pos2;
   float workleft,prevworkleft=100,totalpairs;
 
   totalpairs=(ZeroRayCount-1.0)*(ZeroRayCount-2.0)+1.0;
@@ -625,7 +627,7 @@ void UpdateEdges(RayRecord *RRbegin, RayRecord *RRend)
     quit=FALSE;
     fii1=Ptr1->FirstInfeasIndex;
     pos2=2;
-    for (Ptr2=Ptr1->Next; !ptr2found && !quit; Ptr2=Ptr2->Next, pos2++){
+    for (Ptr2=Ptr1->Next; !ptr2found && !quit; Ptr2=Ptr2->Next,pos2++){
       if  (Ptr2->FirstInfeasIndex > fii1){
         Ptr2begin=Ptr2;
         ptr2found=TRUE;
@@ -644,7 +646,7 @@ void UpdateEdges(RayRecord *RRbegin, RayRecord *RRend)
     Ptr1=Ptr1->Next;
     pos1++;
     workleft = 100 * (ZeroRayCount-pos1) * (ZeroRayCount - pos1-1) / totalpairs;
-    if (ZeroRayCount>=200 && DynamicWriteOn && pos1%10==0 && prevworkleft-workleft>=10 ) {
+    if (ZeroRayCount>=500 && DynamicWriteOn && pos1%10 ==0 && prevworkleft-workleft>=10 ) {
       printf("*Work of iteration %5ld(/%ld): %4ld/%4ld => %4.1f%% left\n",
 	     Iteration, mm, pos1, ZeroRayCount, workleft);
       fprintf(writing,
@@ -658,6 +660,35 @@ void UpdateEdges(RayRecord *RRbegin, RayRecord *RRend)
 _L99:;  
 }
 
+void FreeDDMemory(void)
+{
+  RayRecord *Ptr, *PrevPtr;
+  AdjacencyRecord *AdjPtr, *PrevAdjPtr;
+  rowrange i;
+  long count;
+  boolean localdebug=FALSE;
+  
+  PrevPtr=ArtificialRay;
+  count=0;
+  for (Ptr=ArtificialRay->Next; Ptr!=NULL; Ptr=Ptr->Next){
+    free(PrevPtr->Ray);
+    free(PrevPtr->ZeroSet);
+    free(PrevPtr);
+    count++;
+    PrevPtr=Ptr;
+  };
+  LastRay=NULL;
+  FirstRay=NULL;
+  ArtificialRay=NULL;
+  if (localdebug) printf("%ld ray storage spaces freed\n",count);
+  
+  set_free(InitialHyperplanes);
+  set_free(AddedHyperplanes);
+  set_free(GroundSet);
+  set_free(Face);
+  set_free(Face1);
+  free(OrderVector);
+}
 
 void Normalize(double *V)
 {
@@ -772,14 +803,15 @@ void WriteTableau(FILE *f, Amatrix X, Bmatrix T,
     fprintf(f, "  %ld   %ld    real\n",mm, nn);
   for (i=1; i<= mm; i++) {
     if (ineq==ZeroRHS)
-      WriteReal(f, 0);  /* if RHS==0, the column is not explicitely stored */
+      fprintf(f," %5d", 0);  /* if RHS==0, the column is not explicitely stored */
     for (j=1; j<= nn; j++) {
-      fprintf(f," %5.2f",TableauEntry(X,T,i,j));
+      fprintf(f," %12.6f",TableauEntry(X,T,i,j));
     }
     fprintf(f,"\n");
   }
   fprintf(f,"end\n");
 }
+
 
 void SelectPivot2(Amatrix X, Bmatrix T,
             HyperplaneOrderType roworder,
@@ -892,6 +924,43 @@ void GausianColumnPivot2(Amatrix X, Bmatrix T,
     T[j-1][s - 1] /= Xtemp0;
 }
 
+void GausianColumnQPivot2(Amatrix X, Bmatrix T, double  *absdet,
+				rowrange r, colrange s)
+/* Update the Transformation Q-matrix T with the Q-pivot operation on (r,s) 
+   This procedure performs a implicit pivot operation on the matrix X by
+   updating the translation Q-matrix T=the dual basis inverse times 
+   the determinant det(B).
+ */
+{
+  long j, j1;
+  Arow Rtemp;
+  double Xtemp0, Xtemp;
+
+  for (j=1; j<=nn; j++) Rtemp[j-1]=TableauEntry(X, T, r,j);
+  Xtemp0 = Rtemp[s-1];
+  for (j = 1; j <= nn; j++) {
+    if (j != s) {
+      Xtemp = Rtemp[j-1];
+      if (Xtemp0>0){
+        for (j1 = 1; j1 <= nn; j1++)
+          T[j1-1][j-1] = (T[j1-1][j-1]* Xtemp0 - T[j1-1][s - 1] * Xtemp)/(*absdet);
+      }
+      else{
+        for (j1 = 1; j1 <= nn; j1++)
+          T[j1-1][j-1] = -(T[j1-1][j-1]* Xtemp0 - T[j1-1][s - 1] * Xtemp)/(*absdet);
+      }
+    }
+  }
+  if (Xtemp0>0){
+    *absdet = Xtemp0;
+  }
+  else{
+    for (j = 1; j <= nn; j++)
+      T[j-1][s - 1] /= -1.0;
+    *absdet = -Xtemp0;
+  }
+}
+
 
 void InitializeBmatrix(Bmatrix T)
 {
@@ -982,7 +1051,7 @@ void ReduceAA(long *ChosenRow, long *ChosenCol)
 
 void DualizeAA(Bmatrix T)
 /* Set the matrix AA to be the transpose of the matrix [-AA.T | I],
-   and change mm and nn acordingly 
+   and change mm and nn accordingly 
 */
 {
   long i,j,mnew,nnew;
@@ -1132,7 +1201,7 @@ void WriteBmatrix(FILE *f, Bmatrix T)
 
   for (j1 = 0; j1 < nn; j1++) {
     for (j2 = 0; j2 < nn; j2++) {
-      fprintf(f, "%5.2f ", T[j1][j2]);
+      fprintf(f, "%15.7f ", T[j1][j2]);
     }  /*of j2*/
     putc('\n', f);
   }  /*of j1*/
@@ -1332,6 +1401,77 @@ void SelectCrissCrossPivot(Amatrix X, Bmatrix T,
   }
 }
 
+void SelectCrissCrossQPivot(Amatrix X, Bmatrix T, double adet,
+            long bflag[], rowrange objrow, colrange rhscol,
+            rowrange *r, colrange *s,
+			boolean *selected, LPStatusType *lps)
+{
+  boolean colselected=FALSE, rowselected=FALSE, stop=FALSE;
+  rowrange i;
+  double val;
+  double Qzero;
+  
+  Qzero=zero*adet;
+  *selected=FALSE;
+  *lps=LPSundecided;
+  while ((*lps==LPSundecided) && (!rowselected) && (!colselected)) {
+    for (i=1; i<=mm; i++) {
+      if (bflag[i]!=objrow && bflag[i]==-1) {  /* i is a basic variable */
+        val=TableauEntry(X,T,i,rhscol);
+        if (val < -zero) {
+          rowselected=TRUE;
+          *r=i;
+          break;
+        }
+      }
+      else if (bflag[i] >0) { /* i is nonbasic variable */
+        val=TableauEntry(X,T,objrow,bflag[i]);
+        if (val > zero) {
+          colselected=TRUE;
+          *s=bflag[i];
+          break;
+        }
+      }
+    }
+    if  ((!rowselected) && (!colselected)) {
+      *lps=Optimal;
+      return;
+    }
+    else if (rowselected) {
+     for (i=1; i<=mm; i++) {
+       if (bflag[i] >0) { /* i is nonbasic variable */
+          val=TableauEntry(X,T,*r,bflag[i]);
+          if (val > zero) {
+            colselected=TRUE;
+            *s=bflag[i];
+            *selected=TRUE;
+            break;
+          }
+        }
+      }
+    }
+    else if (colselected) {
+      for (i=1; i<=mm; i++) {
+        if (bflag[i]!=objrow && bflag[i]==-1) {  /* i is a basic variable */
+          val=TableauEntry(X,T,i,*s);
+          if (val < -zero) {
+            rowselected=TRUE;
+            *r=i;
+            *selected=TRUE;
+            break;
+          }
+        }
+      }
+    }
+    if (!rowselected) {
+      *lps=DualInconsistent;
+    }
+    else if (!colselected) {
+      *lps=Inconsistent;
+    }
+  }
+}
+
 void CrissCrossMinimize(Amatrix A1,Bmatrix BasisInverse, 
    rowrange OBJrow, colrange RHScol, LPStatusType *LPS,
    double *optvalue, Arow sol, Arow dsol, colindex NBIndex,
@@ -1344,9 +1484,10 @@ void CrissCrossMinimize(Amatrix A1,Bmatrix BasisInverse,
    CrissCrossMaximize(A1,BasisInverse, OBJrow, RHScol, 
      LPS, optvalue, sol, dsol, NBIndex, re,  se, iter);
    *optvalue=-*optvalue;
-   for (j=1; j<=nn; j++)
+   for (j=1; j<=nn; j++){
      dsol[j-1]=-dsol[j-1];
      AA[OBJrow-1][j-1]=-AA[OBJrow-1][j-1];
+   }
 }
 
 void CrissCrossMaximize(Amatrix A1,Bmatrix BasisInverse, 
@@ -1366,6 +1507,8 @@ When LP is dual-inconsistent then *se returns the evidence column.
   rowset RowSelected,Basis,Cobasis;
   static rowindex BasisFlag;
   static long mlast=0;
+  double adet; /* abs value of the determinant of a basis */
+  boolean Q_debug=FALSE;
 
   if (BasisFlag==NULL || mlast!=mm){
      if (mlast!=mm) free(BasisFlag);   /* called previously with different mm */
@@ -1377,6 +1520,7 @@ When LP is dual-inconsistent then *se returns the evidence column.
   rank = 0;
   stop = FALSE;
   InitializeBmatrix(InitialRays);
+  adet=1.0;
   set_initialize(&Cobasis,mm);
   set_initialize(&Basis,mm);
   set_initialize(&RowSelected, mm);
@@ -1411,17 +1555,30 @@ When LP is dual-inconsistent then *se returns the evidence column.
         NBIndex[s]=r;     /* the nonbasic variable on s column is r */
         if (debug) fprintf(stdout,"nonbasic variable %ld has index %ld\n", r, BasisFlag[r]);
         rank++;
-        GausianColumnPivot2(A1,BasisInverse, r, s);
+        if (QPivotOn)
+          GausianColumnQPivot2(A1,BasisInverse, &adet, r, s);
+        else
+          GausianColumnPivot2(A1,BasisInverse, r, s);
         if (debug) {
           WriteBmatrix(stdout,BasisInverse);
           WriteTableau(stdout,A1,BasisInverse,Inequality),
 	      fprintf(stdout, "%3ldth row added to the initial set (%ldth elem)\n",  r, rank);
+          if (QPivotOn) fprintf(stdout," Absolute value of det(Binv) = %30.16f\n", adet);
 	    }
       } else {
         stop=TRUE;
       }
       if (rank==nn-1) stop = TRUE;
   } while (!stop);
+  
+  if (Q_debug) {
+    fprintf(writing, "CC: initial nonbasis = ");   
+    WriteSetElements(writing,Cobasis); fprintf(writing,"\n");
+    WriteBmatrix(writing,BasisInverse);
+    /* WriteTableau(writing,A1,BasisInverse,Inequality); */
+    if (QPivotOn) fprintf(writing," Absolute value of det(Binv) = %30.16f\n", adet);
+  }
+
   stop=FALSE;
   do {   /* Criss-Cross Method */
     SelectCrissCrossPivot(A1, BasisInverse, BasisFlag,
@@ -1442,12 +1599,16 @@ When LP is dual-inconsistent then *se returns the evidence column.
         fprintf(stdout, "basis = "); set_write(Basis);
         fprintf(stdout, "new nonbasic variable %ld has index %ld\n", leaving, BasisFlag[leaving]);
       }
-      GausianColumnPivot2(A1,BasisInverse, r, s);
+      if (QPivotOn)
+        GausianColumnQPivot2(A1,BasisInverse, &adet, r, s);
+      else
+        GausianColumnPivot2(A1,BasisInverse, r, s);
       (*iter)++;
       if (debug) {
         WriteBmatrix(stdout,BasisInverse);
-        WriteTableau(stdout,A1,BasisInverse,Inequality),
+        WriteTableau(stdout,A1,BasisInverse,Inequality);
 	    fprintf(stdout, "%3ldth row added to the initial set (%ldth elem)\n",  r, rank);
+        if (QPivotOn) fprintf(stdout," Absolute value of det(Binv) = %30.16f\n", adet);
 	  }
     } else {
       switch (*LPS){
@@ -1486,6 +1647,15 @@ When LP is dual-inconsistent then *se returns the evidence column.
 
   default:break;
   }
+
+  if (Q_debug) {
+    fprintf(writing, "CC: final nonbasis = ");   
+    WriteSetElements(writing,Cobasis); fprintf(writing,"\n");
+    WriteBmatrix(writing,BasisInverse);
+    /* WriteTableau(writing,A1,BasisInverse,Inequality);  */
+    if (QPivotOn) fprintf(writing," Absolute value of det(Binv) = %30.16f\n", adet);
+  }
+
   set_free(ColSelected);
   set_free(RowSelected);
   set_free(Basis);
@@ -1498,6 +1668,7 @@ void WriteLPResult(FILE *f, LPStatusType LPS, double optval,
 {
   long j;
 
+  time(&endtime);
   fprintf(f,"*cdd LP Solver (Criss-Cross Method) Result\n");  
   fprintf(f,"*cdd input file : %s   (%4ld  x %4ld)\n",
 	  inputfile, minput, ninput);
@@ -1569,6 +1740,7 @@ void WriteLPResult(FILE *f, LPStatusType LPS, double optval,
     break;
   }
   fprintf(f,"*number of pivot operations = %ld\n", iter);
+  WriteTimes(f);
 }
 
 
@@ -1838,7 +2010,6 @@ void DeleteNegativeRays(void)
   /* Delete the infeasible rays  */
   PrevPtr= ArtificialRay;
   Ptr = FirstRay;
-  ZeroRayCount=0;
   if (PrevPtr->Next != Ptr) 
     printf("Error at DeleteNegativeRays: ArtificialRay does not point the FirstRay.\n");
   completed=FALSE;
@@ -1854,6 +2025,7 @@ void DeleteNegativeRays(void)
   
   /* Sort the zero rays */
   Ptr = FirstRay;
+  ZeroRayCount=0;
   while (Ptr != NULL) {
     NextPtr=Ptr->Next;  /* remember the Next record */
     temp = Ptr->ARay;
@@ -2039,9 +2211,13 @@ void AddNewHyperplane1(rowrange hnew)
   if (RayPtr2s==NULL) {
     FirstRay=NULL;
     ArtificialRay->Next=FirstRay;
-    CompStatus=RegionEmpty;
     RayCount=0;
     VertexCount=0;
+    if (Inequality==ZeroRHS && Conversion==IneToExt){
+      CompStatus=AllFound;
+    } else {
+      CompStatus=RegionEmpty;
+    }
      goto _L99;   /* All rays are infeasible, and the computation must stop */
   }
   RayPtr2 = RayPtr2s;   /*2nd feasible ray to scan and compare with 1st*/
@@ -2116,12 +2292,16 @@ void AddNewHyperplane2(rowrange hnew)
   if (PosHead==NULL && ZeroHead==NULL) {
     FirstRay=NULL;
     ArtificialRay->Next=FirstRay;
-    CompStatus=RegionEmpty;
     RayCount=0;
     VertexCount=0;
+    if (Inequality==ZeroRHS && Conversion==IneToExt){
+      CompStatus=AllFound;
+    } else {
+      CompStatus=RegionEmpty;
+    }
     goto _L99;   /* All rays are infeasible, and the computation must stop */
   }
-
+  
   if (localdebug){
     pos1=0;
     printf("(pos, FirstInfeasIndex, A Ray)=\n");
@@ -2149,6 +2329,7 @@ void AddNewHyperplane2(rowrange hnew)
     free(EdgePtr0);
     EdgeCount--;
   }
+  Edges[Iteration]=NULL;
   
   DeleteNegativeRays();
     
@@ -2156,7 +2337,7 @@ void AddNewHyperplane2(rowrange hnew)
 
   if (Iteration<mm){
     if (ZeroHead!=NULL && ZeroHead!=LastRay){
-      if (ZeroRayCount>=200 && DynamicWriteOn) printf("*New edges being scanned...\n");
+      if (ZeroRayCount>200 && DynamicWriteOn) printf("*New edges being scanned...\n");
       UpdateEdges(ZeroHead,LastRay);
     }
     if (localdebug) printf("*Edges currently stored = %ld\n", EdgeCount);
@@ -2167,4 +2348,5 @@ _L99:;
 }
 
 /* end of cddarith.c */
+
 

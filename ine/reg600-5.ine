@@ -606,6 +606,5 @@ begin
 end
 hull
 incidence
-adjacency
 minindex
  

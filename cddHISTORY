@@ -160,5 +160,8 @@ Version C0.51d (March 28, 1994) /
  - Because of the slowness of Version 0.52* due to unknown reasons, this version
    has been produced for a temporary replacement.  This version fixes the bug
    mentioned in Version C0.52 release.
+
+Version C0.52b (March 28, 1994) /
+ - The slowness problem of Version C0.52(a) is fixed.
  
 --- end of file: cddHISTORY ---

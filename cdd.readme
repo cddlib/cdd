@@ -1,6 +1,36 @@
-1994-03-21
------
-This directory contains the distribution files of the software cdd:
+1994-03-29
+-----------------------
+PROGRAM cdd README FILE
+-----------------------
+The program  cdd  is a C implementation of the Double Description 
+Method of Motzkin et al. for generating all vertices (i.e. extreme points)
+and extreme rays of a general convex polyhedron in R^d given by a system 
+of linear inequalities:
+
+   P = { x :  A  x  <=  b }
+
+where  A  is an m x d real matrix and b is a real m dimensional vector.
+The program can be used for the reverse operation (i.e. convex hull
+computation), etc. 
+
+The cdd package is in "tar"ed and "compress"ed format with name
+cdd-***.tar.Z, where *** is the version number.  The standard
+anonymous ftp site for the package is
+
+     ftp site : ftp.efpl.ch (128.178.139.3)
+     directory: incoming/dma
+     file name: cdd-***.tar.Z
+
+In order to unpack the package in a standard unix environment, type 
+   
+     % uncompress cdd-***.tar.Z
+     % tar xvf cdd-***.tar.Z
+
+where *** must be replaced by the appropriate version number, and
+% is a unix prompt. 
+
+The package cdd consists of the following files which will be
+placed in a newly created sub-directory cdd-*** :
 
      cdd.readme     This file itself
 
@@ -18,10 +48,10 @@ This directory contains the distribution files of the software cdd:
      COPYING        GNU GENERAL PUBLIC LICENSE
 
 Before using the software, please read COPYING and
-compile and print out the manual.  
+and read the manual cddman.tex.  
 
-To compile the manual cddman.tex in standard unix environment, run
-the following command twice (% is a unix prompt): 
+To compile the manual cddman.tex (in latex format) in a standard unix 
+environment, run the following command twice: 
 
    % latex cddmax.tex
 
@@ -41,6 +71,13 @@ In above, gnu C compiler gcc can be replaced by the native C-compiler
 cc of your system if cc supports the modern ANSI C. We have found that
 some cc compilers (such as some C-compiler on SUN workstations)
 do not support it.
+
+There is a supplementary  C program, called domcheck,
+written by Francois Margot of EPFL, which can be used with cdd 
+to compute the orthogonal projection of a polyhedron onto
+the subspace of any subset of variables.  The program domcheck
+can be obtained from the same ftp site above. Note that
+one needs the additional commercial program CPLEX to run domcheck.
 
 For more information, contact
    Komei Fukuda

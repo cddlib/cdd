@@ -1,5 +1,5 @@
 #define COPYRIGHT   "Copyright (C) 1994, Komei Fukuda, fukuda@dma.epfl.ch"
-#define DDVERSION   "Version C0.51d (March 28, 1994)"
+#define DDVERSION   "Version C0.52b (March 29, 1994)"
 
 /*  This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -17,7 +17,7 @@
 */
 
 /* cdd.c : C-Implementation of the double description method for
-   computing all vertices and extremal rays of the polyhedron 
+   computing all vertices and extreme rays of the polyhedron 
    P= {x :  b - A x >= 0}.  
    Please read COPYING (GNU General Public Licence) and
    the manual cddman.tex for details.
@@ -48,7 +48,8 @@ rowset MarkedSet, GroundSet, Face, Face1;
 rowrange Iteration, hh;
 rowindex OrderVector;  /* the permutation vector to store a preordered row indeces */
 rowset AddedHyperplanes, InitialHyperplanes;
-long RayCount, FeasibleRayCount, TotalRayCount, VertexCount, EdgeCount, ZeroRayCount;
+long RayCount, FeasibleRayCount, TotalRayCount, VertexCount, ZeroRayCount;
+long EdgeCount, TotalEdgeCount;
 long count_int=0,count_int_good=0,count_int_bad=0;
 boolean DynamicWriteOn, DynamicRayWriteOn, LogWriteOn, debug;
 Amatrix AA;
@@ -70,6 +71,7 @@ boolean InitBasisAtBottom;  /* if it is on, the initial Basis will be selected a
 boolean PartialEnumeration; /* Partial enumeration Switch (TRUE if it is restricted on the intersection of MarkedSet hyperplanes) */
 boolean PreOrderedRun; 
   /* TRUE if the rows are ordered before execution & all necessary adjacencies are stored */
+boolean QPivotOn; /* QPivot Switch (TRUE if Q-Pivot scheme of Jack Edmonds is chosen) */
 CompStatusType CompStatus;  /* Computation Status */
 ConversionType Conversion;
 IncidenceOutputType IncidenceOutput;
@@ -97,6 +99,7 @@ void DefaultOptionSetup(void)
   IncidenceOutput = IncOff;
   AdjacencyOutput = AdjOff;
   InitBasisAtBottom = FALSE;
+  QPivotOn=FALSE;
 }
 
 void SetInputFile(FILE **f, boolean *success)
@@ -136,6 +139,8 @@ void SetInputFile(FILE **f, boolean *success)
     }
     if (dotpos>0){
       strncpy(ifilehead, inputfile, dotpos-1);
+    }else{
+      strcpy(ifilehead, inputfile);
     }
     if (debug){
       printf("inputfile name: %s\n", inputfile);  
@@ -691,9 +696,9 @@ in highest order.
     found=FALSE;
     for (i1=1; i1<=nn && !found; i1++){
       ki=OrderVector[i1];
-      if (localdebug) printf("priority %ld,  row %ld\n", i1, ki);
       if (!set_member(ki, PriorityRows)){
         found=TRUE;
+        if (localdebug) printf("%ldth in sorted list (row %ld) is not in PriorityRows\n", i1, ki);
         i=i1;
       }
     }
@@ -708,7 +713,7 @@ in highest order.
       }
       if (found2){
         if (localdebug){
-          printf("exchanged with priority %ld  row %ld\n", j, kj);
+          printf("exchanged with %ldth element (row %ld)\n", j, kj);
         }
         OrderVector[i]=kj;
         OrderVector[j]=ki;
@@ -739,7 +744,7 @@ void SelectNextHyperplane(HyperplaneOrderType ho,
   if (*RefreshOrderVector||OrderVector==NULL){
     if (OrderVector!=NULL) free(OrderVector);
     OrderVector=(long *)calloc(mm+1, sizeof *OrderVector);
-    ComputeRowOrderVector(OrderVector, ho);
+    ComputeRowOrderVector2(OrderVector, ho);
     *RefreshOrderVector=FALSE;
   }  
   switch (ho) {
@@ -950,11 +955,20 @@ void WriteDDResult(void)
   if (DynamicWriteOn)
     printf("*Computation complete.\n");
   if (Conversion == IneToExt) {
-    if (DynamicWriteOn)
-      printf("*Number of Vertices =%8ld,   Rays =%8ld\n",
-	     VertexCount, RayCount - VertexCount);
-    fprintf(writing, "*Number of Vertices =%8ld,   Rays =%8ld\n",
-	    VertexCount, RayCount - VertexCount);
+	if (Inequality==ZeroRHS && Conversion == IneToExt){
+      fprintf(writing, "*Number of Rays =%8ld\n", RayCount);
+	  fprintf(writing, "*Caution!: the origin is a vertex, but cdd does not output this trivial vertex\n");
+      if (DynamicWriteOn){
+        printf("*Number of Rays =%8ld\n", RayCount);
+	    printf("*Caution!: the origin is a vertex, but cdd does not output this trivial vertex\n");
+	  }
+    }else{
+      if (DynamicWriteOn)
+        printf("*Number of Vertices =%8ld,   Rays =%8ld\n",
+	       VertexCount, RayCount - VertexCount);
+      fprintf(writing, "*Number of Vertices =%8ld,   Rays =%8ld\n",
+	      VertexCount, RayCount - VertexCount);
+	}
   } else {
     if (DynamicWriteOn)
       printf("*Number of Facets =%8ld\n", RayCount);
@@ -1032,12 +1046,13 @@ void WriteProjRayRecord(FILE *f, RayRecord *RR, long *dbrow)
   static double *vec;
   static rowset dbset;
   static long mprev=0;
-
+  
   if (dbset==NULL || mprev<mm){
-     set_initialize(&dbset,mm);  
-     vec=(double *)calloc(mm, sizeof *vec);
-     /* initialize only for the first time or when a larger space is needed */
-     mprev=mm;
+    set_initialize(&dbset,mm);  
+    vec=(double *)calloc(mm, sizeof *vec);
+    /* initialize only for the first time or when a larger space is needed */
+    mprev=mm;
+    if (debug) printf("mprev is replaced with  = %ld\n", mprev);
   }
   for (j = 1; j <= mm-nn; j++){
     i=dbrow[j];
@@ -1125,20 +1140,26 @@ void DDInit(void)
 {
   long i;
 
+  Error=None;
+  CompStatus=InProgress;
   set_initialize(&InitialHyperplanes,mm);
   set_initialize(&AddedHyperplanes,mm);
   set_initialize(&GroundSet, mm);
   set_initialize(&Face, mm);   /* used in CheckAdjacency  */
   set_initialize(&Face1, mm);  /* used in CheckAdjacency  */
   OrderVector=(long *)calloc(mm+1, sizeof *OrderVector);
-  ComputeRowOrderVector(OrderVector, HyperplaneOrder);
+  ComputeRowOrderVector2(OrderVector, HyperplaneOrder);
   RecomputeRowOrder=FALSE;
   InitializeBmatrix(InitialRays);
   for (i = 1; i <= mm; i++){
     set_addelem(GroundSet, i);
   }
-  EdgeCount=0; /*total edge count */
-  ZeroRayCount=0;
+  RayCount = 0;
+  TotalRayCount = 0;
+  FeasibleRayCount = 0;
+  VertexCount = 0;
+  EdgeCount=0; /* active edge count */
+  TotalEdgeCount=0; /* active edge count */
   if (HyperplaneOrder==MaxCutoff||HyperplaneOrder==MinCutoff) PreOrderedRun=FALSE;
 }
 
@@ -1221,6 +1242,13 @@ void WriteErrorMessages(FILE *f)
 void Initialization(int ARGC, char *ARGV[])
 /* Initialization of global variables */
 {
+  writing_log = NULL;
+  writing_icd = NULL;
+  writing_adj = NULL;
+  writing_proj = NULL;
+  writing = NULL;
+  reading = NULL;
+
   Error=None;
   CompStatus=InProgress;
   if (ARGC>1){
@@ -1239,10 +1267,6 @@ void InitialDataSetup(void)
   rowset ZSet;
 
   time(&starttime);
-  RayCount = 0;
-  TotalRayCount = 0;
-  FeasibleRayCount = 0;
-  VertexCount = 0;
   RecomputeRowOrder=FALSE;
   ArtificialRay = NULL;
   FirstRay = NULL;
@@ -1271,11 +1295,11 @@ void InitialDataSetup(void)
 
 void DDEnumerate(void)
 {
-  if (IncidenceOutput == IncSet)
+  if (IncidenceOutput == IncSet && writing_icd == NULL)
     SetWriteFile(&writing_icd, icdfile, 'i', "incidence");
-  if (AdjacencyOutput != AdjOff)
+  if (AdjacencyOutput != AdjOff && writing_adj == NULL)
     SetWriteFile(&writing_adj, adjfile, 'a', "adjacency");
-  if (LogWriteOn)
+  if (LogWriteOn && writing_log == NULL)
     SetWriteFile(&writing_log, logfile, 'l', "log");
   DDInit();
   FindInitialRays(InitialHyperplanes, InitialRays, &found);
@@ -1284,6 +1308,7 @@ void DDEnumerate(void)
     InitialWriting();
     DDMain();
     WriteDDResult();
+    FreeDDMemory();
   } else {
     WriteErrorMessages(stdout);
     WriteErrorMessages(writing);
@@ -1396,6 +1421,7 @@ void LPMain(void)
   double ov;  /* LP optimum value */
   long LPiter;
 
+  time(&starttime);
   if (Inequality==ZeroRHS){
     printf("Sorry, LP optimization is not implemented for RHS==0.\n");
     goto _L99;
@@ -1449,10 +1475,6 @@ void WriteHeading(void)
 
 void main(int argc, char *argv[])
 {
-  writing_log = NULL;
-  writing_icd = NULL;
-  writing = NULL;
-  reading = NULL;
   WriteHeading();
   DefaultOptionSetup();
   Initialization(argc, argv);
@@ -1475,6 +1497,7 @@ void main(int argc, char *argv[])
     
     case LPmax:  case LPmin:      /* LP is chosen */
       LPMain();
+      
       break;
 
     case Projection:              /* preprojection is chosen */
@@ -1512,4 +1535,3 @@ void main(int argc, char *argv[])
 }
 
 /* end of cdd.c */
-

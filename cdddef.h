@@ -1,10 +1,10 @@
 /* cdddef.h:  Definition file for cdd.c 
    written by Komei Fukuda, fukuda@dma.epfl.ch
-   Version 0.51c,  March 15, 1994
+   Version 0.52b,  March 29, 1994
 */
 
 /* cdd.c : C-Implementation of the double description method for
-   computing all vertices and extremal rays of the polyhedron 
+   computing all vertices and extreme rays of the polyhedron 
    P= {x :  b - A x >= 0}.  
    Please read COPYING (GNU General Public Licence) and
    the manual cddman.tex for detail.

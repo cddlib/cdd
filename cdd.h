@@ -1,10 +1,10 @@
 /* cdd.h: Header file for cdd.c 
    written by Komei Fukuda, fukuda@dma.epfl.ch
-   Version 0.51c, March 15, 1994 
+   Version 0.52b, March 29, 1994 
 */
 
 /* cdd.c : C-Implementation of the double description method for
-   computing all vertices and extremal rays of the polyhedron 
+   computing all vertices and extreme rays of the polyhedron 
    P= {x :  b - A x >= 0}.  
    Please read COPYING (GNU General Public Licence) and
    the manual cddman.tex for detail.
@@ -31,6 +31,7 @@ typedef struct RayRecord {
   double *Ray;
   rowset ZeroSet;
   rowrange FirstInfeasIndex;  /* the first inequality the ray violates */
+  boolean feasible;  /* flag to store the feasibility */
   double ARay;   /* temporary area to store some row of A*Ray */
   struct RayRecord *Next;
 } RayRecord;
@@ -87,7 +88,8 @@ extern rowset MarkedSet, GroundSet, Face, Face1;
 extern rowrange Iteration, hh;
 extern rowindex OrderVector;
 extern rowset AddedHyperplanes, InitialHyperplanes;
-extern long RayCount, FeasibleRayCount, TotalRayCount, VertexCount, EdgeCount, ZeroRayCount;
+extern long RayCount, FeasibleRayCount, TotalRayCount, VertexCount,ZeroRayCount;
+extern long EdgeCount,TotalEdgeCount;
 extern long count_int,count_int_good,count_int_bad;
 extern boolean DynamicWriteOn, DynamicRayWriteOn, LogWriteOn, debug;
 extern Amatrix AA;
@@ -108,6 +110,7 @@ extern boolean NondegAssumed;   /* Nondegeneacy preknowledge flag */
 extern boolean InitBasisAtBottom;  /* if it is on, the initial Basis will be selected at bottom */
 extern boolean PartialEnumeration; /* Partial enumeration Switch (TRUE if it is restricted on the intersection of MarkedSet hyperplanes) */
 extern boolean PreOrderedRun; 
+extern boolean QPivotOn; /* QPivot Switch (TRUE if Q-Pivot scheme of Jack Edmonds is chosen) */
 extern CompStatusType CompStatus;     /* Computation Status */
 extern ConversionType Conversion;
 extern IncidenceOutputType IncidenceOutput;
@@ -141,6 +144,7 @@ void AddArtificialRay(void);
 void ConditionalAddEdge(RayRecord *Ray1, RayRecord *Ray2, RayRecord *ValidFirstRay);
 void CreateInitialEdges(void);
 void UpdateEdges(RayRecord *RRbegin, RayRecord *RRend);
+void FreeDDMemory(void);
 void Normalize(double *);
 void ZeroIndexSet(double *, long *);
 void CopyBmatrix(Bmatrix T, Bmatrix TCOPY);
@@ -151,7 +155,8 @@ void WriteTableau(FILE *,Amatrix, Bmatrix T,InequalityType);
 void SelectPivot2(Amatrix, Bmatrix T,
    HyperplaneOrderType,rowrange, long *,long *, rowrange *, colrange *,boolean *);
 void GausianColumnPivot1(Amatrix, rowrange, colrange,rowrange);
-void GausianColumnPivot2(Amatrix, Bmatrix T,rowrange, colrange);
+void GausianColumnPivot2(Amatrix, Bmatrix,  rowrange, colrange);
+void GausianColumnQPivot2(Amatrix, Bmatrix, double *,rowrange, colrange);
 void InitializeBmatrix(Bmatrix T);
 void SetToIdentity(Bmatrix T);
 void free_Bmatrix(Bmatrix T);
@@ -203,4 +208,3 @@ void WriteCompletionStatus(FILE *);
 void WriteTimes(FILE *);
 
 /* end of cdd.h */
-
