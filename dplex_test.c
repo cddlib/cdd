@@ -1,6 +1,6 @@
 /* dplex_test.c: Main test program to call the dplex library
    written by Komei Fukuda, fukuda@ifor.math.ethz.ch
-   Version 0.60, August 21, 1996
+   Version 0.61alpha, October 31, 1997
    Standard ftp site: ifor13.ethz.ch(129.132.154.13), Directory: pub/fukuda/cdd
 */
 
@@ -58,7 +58,7 @@ void main(int argc, char *argv[])
   colindex NBIndex;    /*  NBIndex[j] is to store the jth nonbasic variable, j=0,1,...,nn-1*/ 
   Arow LPsol, LPdsol;  /*  LP solution x* and the dual solution y* (basic vars only) */
   rowrange re;  /* evidence row when LP is inconsistent */
-  colrange se;  /* evidence col when LP is dual-inconsistent */
+  colrange se,j;  /* evidence col when LP is dual-inconsistent */
   double ov;    /* LP optimum value */
   long LPiter;  /* iteration (=number of pivots) number */
   Bmatrix BasisInverse;    /* dual basis inverse matrix. */ 
@@ -67,35 +67,50 @@ void main(int argc, char *argv[])
   colrange RHScol;         /* rhs column = the first column of A (= 0th column in C) */
   dp_LPSolverType solver;      /* to be used to specify algorithm */
   dp_LPConversionType lpconv;  /* to be used to specify maximization or minimization */
-  dp_ErrorType error;          /* In case of errors, this will return the clue */
+  dp_ErrorType error=dp_None;  /* In case of errors, this will return the clue */
   dp_LPStatusType LPStatus;    /* to be used to notify the status of current solution */
   dp_FilenameType inputfile;   
     /* This filename (array of char's) is necessary if one uses dp_LPInput to input an LP */
-  
-  /* Input an LP using the dplex library  */
-  dp_LPInput(&reading, inputfile, &mm, &nn, AA, &lpconv, &OBJrow, &RHScol, &error);
+   
+  while (error==dp_None) {
+    /* Input an LP using the dplex library  */
+    dp_LPInput(&reading, inputfile, &mm, &nn, AA, &lpconv, &OBJrow, &RHScol, &error);
 
-  if (error!=dp_None) {
-    dp_WriteErrorMessages(stdout, error);
-    goto _L99;
+    if (error!=dp_None) {
+      dp_WriteErrorMessages(stdout, error);
+      goto _L99;
+    }
+
+    SetWriteFile(&writing);
+
+    dp_InitializeBmatrix(nn, BasisInverse);  
+      /* One must initialize BasisInverse before calling dp_LPSolve */
+
+    solver=dp_DualSimplex;   /* either dp_DualSimplex or dp_CrissCross  */
+  
+    /* Find an interior point with dplex */
+    printf("\n--- Running dp_FindInteriorPoint ---\n");
+    dp_FindInteriorPoint(solver, mm, nn, AA, OBJrow, RHScol, 
+      &LPStatus, &ov, LPsol, &LPiter, &error);
+    if (dp_Positive(ov)){
+      printf("An interior point found: (");
+      for (j=1; j<nn; j++) dp_WriteReal(stdout,LPsol[j]);
+      printf(")\n");
+    }
+    if (dp_Negative(ov)) printf("The feasible region is empty.\n");
+    if (dp_Zero(ov)) printf("The feasible region is nonempty but has no interior point.\n");
+
+    /* Solve the LP by dplex LP solver  */
+    printf("\n--- Running dp_LPSolve ---\n");
+    dp_LPSolve(lpconv, solver, mm, nn, AA, BasisInverse, OBJrow, RHScol, UsePrevBasis,
+        &LPStatus, &ov, LPsol, LPdsol, NBIndex, &re, &se, &LPiter, &error);
+
+    /* Write the LP solutions by dplex LP reporter  */
+    dp_WriteLPResult(stdout, lpconv, solver, mm, nn, AA, OBJrow, RHScol,
+      LPStatus, ov, LPsol, LPdsol, NBIndex, re, se, LPiter, error);
+    dp_WriteLPResult(writing, lpconv, solver, mm, nn, AA, OBJrow, RHScol,
+      LPStatus, ov, LPsol, LPdsol, NBIndex, re, se, LPiter, error);
   }
-
-  SetWriteFile(&writing);
-
-  dp_InitializeBmatrix(nn, BasisInverse);  
-     /* One must initialize BasisInverse before calling dp_LPSolve */
-  solver=dp_DualSimplex;   /* either dp_DualSimplex or dp_CrissCross  */
-  
-  /* Solve the LP by dplex LP solver  */
-  dp_LPSolve(lpconv, solver, mm, nn, AA, BasisInverse, OBJrow, RHScol, UsePrevBasis,
-        &LPStatus, &ov, LPsol, LPdsol,NBIndex, &re, &se, &LPiter, &error);
-
-  /* Write the LP solutions by dplex LP reporter  */
-  dp_WriteLPResult(stdout, lpconv, solver, mm, nn, AA, OBJrow, RHScol,
-    LPStatus, ov, LPsol, LPdsol, NBIndex, re, se, LPiter, error);
-  dp_WriteLPResult(writing, lpconv, solver, mm, nn, AA, OBJrow, RHScol,
-    LPStatus, ov, LPsol, LPdsol, NBIndex, re, se, LPiter, error);
-
 _L99:;
 }
 

@@ -1,0 +1,113 @@
+This is CTeX, NeXT Version 3.141 (format=latex 96.5.21)  1 DEC 1997 18:14
+**cddman
+(cddman.tex
+LaTeX2e <1995/12/01> patch level 2
+(/LocalLibrary/TeX/tex/latex/article.cls
+Document Class: article 1995/12/20 v1.3q Standard LaTeX document class
+(/LocalLibrary/TeX/tex/latex/size11.clo
+File: size11.clo 1995/12/20 v1.3q Standard LaTeX file (size option)
+)
+\c@part=\count79
+\c@section=\count80
+\c@subsection=\count81
+\c@subsubsection=\count82
+\c@paragraph=\count83
+\c@subparagraph=\count84
+\c@figure=\count85
+\c@table=\count86
+\abovecaptionskip=\skip41
+\belowcaptionskip=\skip42
+\bibindent=\dimen102
+)
+(/LocalLibrary/TeX/tex/latex/html.sty
+Package: html 1996/02/01 v1.0 hypertext commands for latex2html (nd, hs)
+\c@lpart=\count87
+\c@lchapter=\count88
+\c@lsection=\count89
+\c@lsubsection=\count90
+\c@lsubsubsection=\count91
+\c@lparagraph=\count92
+\c@lsubparagraph=\count93
+\c@lsubsubparagraph=\count94
+\c@lequation=\count95
+) (cddman.aux)
+LaTeX Font Info:    Checking defaults for OML/cmm/m/it on input line 18.
+LaTeX Font Info:    ... okay on input line 18.
+LaTeX Font Info:    Checking defaults for T1/cmr/m/n on input line 18.
+LaTeX Font Info:    ... okay on input line 18.
+LaTeX Font Info:    Checking defaults for OT1/cmr/m/n on input line 18.
+LaTeX Font Info:    ... okay on input line 18.
+LaTeX Font Info:    Checking defaults for OMS/cmsy/m/n on input line 18.
+LaTeX Font Info:    ... okay on input line 18.
+LaTeX Font Info:    Checking defaults for OMX/cmex/m/n on input line 18.
+LaTeX Font Info:    ... okay on input line 18.
+LaTeX Font Info:    Checking defaults for U/cmr/m/n on input line 18.
+LaTeX Font Info:    ... okay on input line 18.
+LaTeX Font Info:    External font `cmex10' loaded for size
+(Font)              <12> on input line 29.
+LaTeX Font Info:    External font `cmex10' loaded for size
+(Font)              <8> on input line 29.
+LaTeX Font Info:    External font `cmex10' loaded for size
+(Font)              <6> on input line 29.
+LaTeX Font Info:    External font `cmex10' loaded for size
+(Font)              <10.95> on input line 62.
+ [1
+
+] [2] [3] [4] [5]
+LaTeX Font Info:    External font `cmex10' loaded for size
+(Font)              <9> on input line 426.
+LaTeX Font Info:    External font `cmex10' loaded for size
+(Font)              <5> on input line 426.
+
+[6] [7] [8] [9] [10] [11] [12] [13]
+Overfull \hbox (3.28256pt too wide) in paragraph at lines 986--986
+ []\OT1/cmtt/m/n/10.95 #define dp_NMAX    101   /* USER'S CHOICE: max column si
+ze of A plus one */[] 
+ []
+
+[14] [15] [16] [17] (cddman.bbl
+Underfull \hbox (badness 10000) in paragraph at lines 16--21
+[][]\OT1/cmr/m/n/10.95 N. Amenta.  Di-rec-tory of com-pu-ta-tional ge-om-e-try.
+
+ []
+
+[18]
+Underfull \hbox (badness 10000) in paragraph at lines 50--56
+[][]\OT1/cmr/m/n/10.95 T. Christof and A. L^^?obel.  porta.  http://www.iwr.uni
+-
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 63--68
+[][]\OT1/cmr/m/n/10.95 J. Er-ick-son.  Com-pu-ta-tional ge-om-e-try pages.
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 70--76
+[][]\OT1/cmr/m/n/10.95 R. Fourer and J.W. Gre-gory.  Lin-ear pro-gram-ming FAQ,
+ 1997.
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 87--93
+[][]\OT1/cmr/m/n/10.95 K. Fukuda.  Poly-he-dral com-pu-ta-tion FAQ.  on line do
+c-u-ment,
+ []
+
+
+Underfull \hbox (badness 5519) in paragraph at lines 87--93
+\OT1/cmr/m/n/10.95 ETHZ and EPFL, 1997.  both html and ps ver-sions avail-able 
+from
+ []
+
+) [19] (cddman.aux) ) 
+Here is how much of TeX's memory you used:
+ 383 strings out of 15947
+ 3930 string characters out of 149517
+ 49680 words of memory out of 262141
+ 3274 multiletter control sequences out of 9500
+ 9930 words of font info for 35 fonts, out of 72000 for 255
+ 14 hyphenation exceptions out of 607
+ 24i,9n,21p,143b,333s stack positions out of 300i,40n,60p,3000b,4000s
+
+Output written on cddman.dvi (19 pages, 67152 bytes).

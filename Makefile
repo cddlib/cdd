@@ -1,8 +1,8 @@
-# Makefile for cdd-057.
+# Makefile for cdd-061.
 
-# Select ANSI C compiler
-#CC = /usr/local/bin/gcc
-CC = /bin/cc
+# Select an ANSI C compiler
+CC = /usr/local/bin/gcc
+#CC = /bin/cc
 
 # Location of include files
 INCLUDEDIR = .
@@ -10,7 +10,7 @@ INCLUDEDIR = .
 # Compiler options
 #CFLAGS = -g -O -I$(INCLUDEDIR)
 #CFLAGS = -g -pg -O -I$(INCLUDEDIR)
-CFLAGS = -O -I$(INCLUDEDIR)
+CFLAGS = -O3 -I$(INCLUDEDIR)
 
 ########## You shouldn't have to change anything after this point ##########
 

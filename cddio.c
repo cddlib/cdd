@@ -1,6 +1,6 @@
 /* cddio.c:  Basic Input and Output Procedures for cdd.c
    written by Komei Fukuda, fukuda@ifor.math.ethz.ch
-   Version 0.60, August 21, 1996
+   Version 0.61b, November 29, 1997
 */
 
 /* cdd.c : C-Implementation of the double description method for
@@ -30,7 +30,7 @@ void SetInputFile(FILE **f, boolean *success)
   *success=FALSE;
   while (!opened && !quit) {
     if (FileInputMode!=Auto){
-      printf("\n>> Input file (*.ine) : ");
+      printf("\n>> Input file (*.ine or *.ext) : ");
       scanf("%s",inputfile);
       ch=getchar();
     }
@@ -287,6 +287,11 @@ void ProcessCommandLine(rowrange m_input, colrange n_input, char *line)
     VerifyInput = TRUE;
     return;
   }
+  if (strncmp(line, "output_reordered", 16)==0 && !OutputReordered){
+    printf("* The reordered problem will be generated.\n");
+    OutputReordered=TRUE;
+    return;
+  }
   if (strncmp(line, "debug", 5)==0) {
     debug = TRUE;
     return;
@@ -389,7 +394,7 @@ void AmatrixInput(rowrange *m_input, colrange *n_input,
   long i,j;
   double value;
   long value1,value2;
-  boolean found=FALSE,decided=FALSE, fileopened;
+  boolean found=FALSE,decided=FALSE, fileopened, newformat=FALSE;
   char command[wordlenmax], numbtype[wordlenmax], stemp[wordlenmax], line[linelenmax];
 
   *successful = FALSE;
@@ -406,8 +411,12 @@ void AmatrixInput(rowrange *m_input, colrange *n_input,
       Error=ImproperInputFormat;
       goto _L99;
     }
-    else if (strncmp(command, "begin", 5)==0) {
-      found=TRUE;
+    else {
+      if (strncmp(command, "V-representation", 16)==0) {
+        Conversion = ExtToIne; newformat=TRUE;
+      } else if (strncmp(command, "H-representation", 16)==0){
+          Conversion =IneToExt; newformat=TRUE;
+        } else if (strncmp(command, "begin", 5)==0) found=TRUE;
     }
   }
   fscanf(reading, "%ld %ld %s", m_input, n_input, numbtype);
@@ -596,7 +605,7 @@ void WriteSubMatrixOfA(FILE *f, rowrange m_size, colrange n_size, Amatrix A,
 {
   long i,j;
 
-  fprintf(f, "begin\n");
+  fprintf(f, "H-representation\nbegin\n");
   if (ineq==ZeroRHS)
     fprintf(f, "  %ld   %ld    real\n",m_size, set_card(ChosenCol)+1);
   else
@@ -641,6 +650,29 @@ void WriteAmatrix(FILE *f, Amatrix A, long rowmax, long colmax,
       WriteReal(f, A[i-1][j-1]);
     }
     fprintf(f,"\n");
+  }
+  fprintf(f, "end\n");
+}
+
+void WriteAmatrix2(FILE *f, Amatrix A, long rowmax, long colmax,
+      InequalityType ineq, rowindex OV, rowrange iteration)
+{ /* Writing an A matrix with a given ordering and size */
+  long i,j,imax;
+
+  imax=iteration;
+  if (imax>rowmax) imax=rowmax;
+  fprintf(f, "begin\n");
+  if (ineq==ZeroRHS)
+    fprintf(f, "  %ld   %ld    real\n",imax, colmax+1);
+  else
+    fprintf(f, "  %ld   %ld    real\n",imax, colmax);
+  for (i=1; i <= imax; i++) {
+    if (ineq==ZeroRHS)
+      WriteReal(f, 0);  /* if RHS==0, the column is not explicitely stored */
+    for (j=1; j <= colmax; j++) {
+      WriteReal(f, A[OV[i]-1][j-1]);
+    }
+    fprintf(f,"  #%1ld\n", OV[i]);
   }
   fprintf(f, "end\n");
 }
@@ -889,6 +921,23 @@ void WriteRunningMode2(FILE *f, rowrange m_size, colrange n_size)
   }
 }
 
+void WriteRunningMode0(FILE *f)
+{
+  switch (Conversion) {
+    case ExtToIne:
+      fprintf(f, "V-representation\n");
+      break;
+    
+    case IneToExt: case LPmax: case LPmin: case Projection:
+      fprintf(f, "H-representation\n");
+      break;
+
+    default: break;
+  }
+}
+
+
+
 void WriteCompletionStatus(FILE *f, rowrange m_size, colrange n_size, rowrange iter)
 {
   if (iter<m_size && CompStatus==AllFound) {
@@ -1078,6 +1127,8 @@ void WriteDDResult(rowrange m_input, colrange n_input,
       printf("*Number of Facets =%8ld\n", FeasibleRayCount);
     fprintf(writing, "*Number of Facets =%8ld\n", FeasibleRayCount);
   }
+  if (Conversion == ExtToIne) fprintf(writing, "H-representation\n");
+  if (Conversion == IneToExt) fprintf(writing, "V-representation\n");
   fprintf(writing, "begin\n");
   switch (Inequality) {
   case ZeroRHS:
@@ -1255,7 +1306,7 @@ void WriteProjResult(rowrange m_input, colrange n_input,
 	   VertexCount, FeasibleRayCount - VertexCount);
   fprintf(writing, "*Number of Vertices =%8ld,   Rays =%8ld\n",
 	 VertexCount, FeasibleRayCount - VertexCount);
-  fprintf(writing, "begin\n");
+  fprintf(writing, "V-representation\nbegin\n");
   fprintf(writing, " %8ld  %5ld    real\n", FeasibleRayCount, m_size + 1);
   TempPtr = FirstRay;
   while (TempPtr != NULL) {
@@ -1346,10 +1397,29 @@ void WriteSolvedProblem(FILE *f, rowrange m_input, colrange n_input,
   fprintf(f, "*cdd input file : %s   (%4ld  x %4ld)\n",
 	  inputfile, m_input, n_input);
   fprintf(f, "*The input data has been interpreted as the following.\n");
+  WriteRunningMode0(writing_ver);
   WriteAmatrix(writing_ver,A,m_size,n_size,Inequality);
   WriteRunningMode2(writing_ver, m_size, n_size);
 }
 
+void WriteSolvedSubProblem(FILE *f, rowrange m_input, colrange n_input, 
+    rowrange m_size, colrange n_size, Amatrix A, rowindex OV, 
+    rowrange iteration)
+{ rowrange imax=iteration;
+
+  if (imax<1 || imax>m_size) {
+    fprintf(f, "*The subproblem %ld does not exist, thus the whole problem will be ouput.\n",imax);
+    imax=m_size;
+  }
+  fprintf(f, "*cdd input file : %s   (%4ld  x %4ld)\n",
+	  inputfile, m_input, n_input);
+  fprintf(f, "*The %ld th subproblem with the options:\n",imax);
+  WriteRunningMode2(writing_ver, m_size, n_size);
+  fprintf(f, "*is the following problem.\n");
+  WriteAmatrix2(writing_ver,A,m_size,n_size,Inequality, OV, imax);
+  if (Conversion==ExtToIne) fprintf(f, "hull\n");
+  fprintf(f, "minindex\n");
+}
 
 
 /* end of cddio.c */

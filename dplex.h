@@ -1,6 +1,6 @@
 /* dplex.h: Header file for dplex.c 
    written by Komei Fukuda, fukuda@ifor.math.ethz.ch
-   Version 0.6, August 21, 1996
+   Version 0.61alpha, October 31, 1997
 */
 
 /* dplex.c : C-Implementation of the dual simplex method for
@@ -45,7 +45,8 @@ typedef enum {
 } dp_LPSolverType;
 
 typedef enum {
-  dp_LPSundecided, dp_Optimal, dp_Inconsistent, dp_DualInconsistent, 
+  dp_LPSundecided, dp_Optimal, dp_Inconsistent, dp_DualInconsistent,
+  dp_StrucInconsistent, dp_StrucDualInconsistent,
   dp_Unbounded, dp_DualUnbounded
 } dp_LPStatusType;
 
@@ -53,16 +54,30 @@ void dp_LPInput(FILE **f, dp_FilenameType, rowrange *m, colrange *n, Amatrix A,
     dp_LPConversionType *Conversion, rowrange *objrow, colrange *rhscol, 
     dp_ErrorType *err);
 
+void dp_InitializeBmatrix(colrange n_size, Bmatrix T);
+
 void dp_LPSolve(dp_LPConversionType, dp_LPSolverType, 
    rowrange, colrange, Amatrix, Bmatrix BasisInverse, 
    rowrange OBJrow, colrange RHScol, int UsePrevBasis, dp_LPStatusType *LPS,
    double *optvalue, Arow sol, Arow dsol, colindex NBIndex,
    rowrange *re, colrange *se, long *iter, dp_ErrorType *);
 
+void dp_FindInteriorPoint(dp_LPSolverType, 
+   rowrange, colrange, Amatrix, rowrange, colrange, dp_LPStatusType *,
+   double *, Arow, long *, dp_ErrorType *);  /* new function of the version 061. */
+
 void dp_WriteLPResult(FILE *, dp_LPConversionType, dp_LPSolverType,
   rowrange m_size, colrange n_size, Amatrix A, rowrange objrow, colrange rhscol,
   dp_LPStatusType, double, Arow, Arow, colindex, rowrange, colrange, long, dp_ErrorType);
 
 void dp_WriteErrorMessages(FILE *, dp_ErrorType);
+
+int dp_Nonnegative(double);
+int dp_Nonpositive(double);
+int dp_Positive(double);
+int dp_Negative(double);
+int dp_Zero(double);
+int dp_Nonzero(double);
+
 
 /* end of dplex.h */

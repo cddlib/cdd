@@ -1,4 +1,4 @@
-cdd & cdd+ HISTORY file
+cdd & cdd+ HISTORY file    (as of December 1, 1997)
 
 *** cdd version (date) / changes ***
 
@@ -216,16 +216,22 @@ Version 0.60 (August 27, 1996) /
    This library is called dplex, and contains two algorithms,
    the dual simplex and the criss-cross method.
 
+Version 0.61 (December 1, 1997) /
+   It accepts "H-representation" and "V-representation" statements
+   which are added to a Polyhedra format (1997).
+   dp_FindInteriorPoint is added to dplex.  Some small bugs are
+   fixed in dplex.
+
 *** cdd+ version (date) / changes ***
 
-ccd+ Version 0.70 (April 3, 1995) /
+cdd+ Version 0.70 (April 3, 1995) /
    The first C++ version of cdd which can run on both floating-point
    and rational (exact) arithmetics.  The basic functions are
    identical to cdd-055.  This version requires GNU gcc compilers
    (2.6.0 or higher) and a compatible g++lib.
 
 
-ccd+ Version 0.71 (April 15, 1995) /
+cdd+ Version 0.71 (April 15, 1995) /
    Two new functions (through options) are added.  The option 
    "facet_listing" checks whether each input inequality determines
    a facet or not.  The second option "tope_listing" generates
@@ -236,7 +242,7 @@ ccd+ Version 0.71 (April 15, 1995) /
    form.  Criss-cross LP solver is now sensitive to ordering
    options, lexmin, minindex, radom, etc.
 
-ccd+ Version 0.72 (April 16, 1995) /
+cdd+ Version 0.72 (April 16, 1995) /
    The option "postanalysis" is added. This option is to be used 
    after *.ext file is obtained.  When this option is set
    with adjacency and/or incidence options, one can get
@@ -289,5 +295,12 @@ cdd+ Version 0.74beta2 (June 5, 1996) /
 
 cdd+ Version 0.74 (June 17, 1996) /
    Few minor bug fixes were made.
+
+cdd+ Version 0.75 (November 30, 1997) /
+   This is a maintenance update of the previous version to employ the 
+   new 1997 Polyhedra format (introducing H-representation and
+   V-representation statements).  Three options for accuracy control
+   is added: "zero_tolerance", "round_output_off" and "output_digits".
+   
 
 --- end of file: cddHISTORY ---

@@ -1,7 +1,7 @@
 /* cdd.c: Main program of the sofware cdd
    written by Komei Fukuda, fukuda@ifor.math.ethz.ch
-   Version 0.60, August 21, 1996
-   Standard ftp site: ifor13.ethz.ch(129.132.154.13), Directory: pub/fukuda/cdd
+   Version 0.61b, November 29, 1997
+   Standard ftp site: ftp.ifor.math.ethz.ch, Directory: pub/fukuda/cdd
 */
 
 /* cdd : C-Implementation of the double description method for
@@ -44,6 +44,7 @@
 /* #include <profile.h>    THINK C PROFILER */
 /* #include <console.h>    THINK C PROFILER */
 
+boolean OutputReordered=FALSE;  /* if TRUE, output the reordered problem  */
 long projdim;  /*dimension of orthogonal preprojection */
 colset projvars;   /*set of variables spanning the space of preprojection, 
      i.e. the remaining variables are to be removed*/
@@ -271,7 +272,7 @@ void DDInit(rowrange m_size, colrange n_size, Amatrix A, Bmatrix InitialRays,
 void DDMain(rowrange m_input, colrange n_input, 
     rowrange m_size, colrange n_size, Amatrix A, rowrange *Iteration, rowindex ordervec)
 {
-  rowrange hh;
+  rowrange hh, itemp, otemp;
 
   *Iteration = n_size + 1;
   while (*Iteration <= m_size) {
@@ -293,10 +294,17 @@ void DDMain(rowrange m_input, colrange n_input,
     } else {
       if (PreOrderedRun)
         AddNewHyperplane2(m_size, n_size, A, hh, *Iteration, ordervec);
-      else
+      else{
         AddNewHyperplane1(m_size, n_size, A, hh, *Iteration, ordervec);
+      }
       set_addelem(AddedHyperplanes, hh);
       set_addelem(WeaklyAddedHyperplanes, hh);
+    }
+    if (!PreOrderedRun){
+      for (itemp=1; ordervec[itemp]!=hh; itemp++);
+      otemp=ordervec[*Iteration];
+      ordervec[*Iteration]=hh;   /* store the dynamic ordering in ordervec */
+      ordervec[itemp]=otemp;     /* store the dynamic ordering in ordervec */
     }
     if (LogWriteOn)
       fprintf(writing_log, "%3ld %5ld %6ld %6ld %6ld\n",
@@ -384,6 +392,7 @@ void DDEnumerate(rowrange m_input, colrange n_input,
   colindex InitRayIndex; /* 0 if the corr. ray is for generator of an extreme line */ 
   rowrange Iteration=0;
   rowindex OrderVector;
+  boolean reordered_write_afterwards=FALSE;
   
   if (IncidenceOutput == IncSet && writing_icd == NULL)
     SetWriteFile(&writing_icd, icdfile, 'i', "incidence");
@@ -398,9 +407,22 @@ void DDEnumerate(rowrange m_input, colrange n_input,
     InitialHyperplanes, InitRays, InitRayIndex, &found);
   if (found) {
     InitialDataSetup(m_size, n_size, A, InitRays, InitRayIndex, OrderVector);
+    if (OutputReordered) {
+      if (HyperplaneOrder!=MaxCutoff&&HyperplaneOrder!=MinCutoff&&HyperplaneOrder!=MixCutoff) {
+        SetWriteFile(&writing_ver,verfile,'v',"reordered problem output");
+        WriteSolvedSubProblem(writing_ver, m_input, n_input, m_size, n_size, A, OrderVector, m_size);
+        fclose(writing_ver);
+      } else 
+        reordered_write_afterwards=TRUE;
+    }
     InitialWriting(m_input, n_input, m_size, n_size);
     DDMain(m_input, n_input, m_size, n_size, A, &Iteration, OrderVector);
     WriteDDResult(m_input, n_input, m_size, n_size, A, Iteration);
+    if (reordered_write_afterwards) {
+      SetWriteFile(&writing_ver,verfile,'v',"reordered poblem output");
+      WriteSolvedSubProblem(writing_ver, m_input, n_input, m_size, n_size, A, OrderVector, m_size);
+      fclose(writing_ver);
+    }
     FreeDDMemory(OrderVector);
   } else {
     WriteDDResult(m_input, n_input, m_size, n_size, A, Iteration);
@@ -542,6 +564,8 @@ void PreProjection(rowrange m_input, colrange n_input,
   }
   PreOrderedRun=FALSE;
   InitializeBmatrix(n_size, DBinv);
+  OrderVector=(long *)calloc(m_size+1, sizeof *OrderVector);
+  DDInit(m_size, n_size, A, InitRays,OrderVector);
   FindBasis(m_size, n_size, A, MinIndex, OrderVector, DBrows,pivrow,DBinv,&DBrank);
     /* DBrows stores the rows associated with a dual basis */
   if (debug){
@@ -578,8 +602,6 @@ void PreProjection(rowrange m_input, colrange n_input,
     WriteRunningMode(stdout);
     WriteRunningMode(writing);
   }
-  OrderVector=(long *)calloc(m_size+1, sizeof *OrderVector);
-  DDInit(m_size, n_size, A, InitRays,OrderVector);
   FindInitialRays(m_size, n_size, A, OrderVector,
     InitialHyperplanes, InitRays, InitRayIndex, &found);
   if (found) {
@@ -670,7 +692,7 @@ void InteriorFindMain(rowrange m_input, colrange n_input,
     printf("Sorry, find_interior is not implemented for RHS==0.\n");
     goto _L99;
   }
-  EnlargeAforInteriorFinding(&m_input, &n_input, A);
+  EnlargeAforInteriorFinding(&m_size, &n_size, A);
   dp_InitializeBmatrix(n_size, BasisInverse);
 
   time(&starttime);

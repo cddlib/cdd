@@ -1,6 +1,6 @@
  /* cdd.h: Header file for cdd.c 
    written by Komei Fukuda, fukuda@ifor.math.ethz.ch
-   Version 0.60, August 21, 1996
+   Version 0.61b, November 29, 1997
 */
 
 /* cdd.c : C-Implementation of the double description method for
@@ -11,7 +11,7 @@
 */
 
 #define COPYRIGHT   "Copyright (C) 1996, Komei Fukuda, fukuda@ifor.math.ethz.ch"
-#define DDVERSION   "Version 0.60 (August 21, 1996)"
+#define DDVERSION   "Version 0.61b (November 29, 1997)"
 #include <time.h>
 #include "dplex.h"
 #include "dplexdef.h"
@@ -101,6 +101,7 @@ typedef enum {
   InProgress, AllFound, RegionEmpty
 } CompStatusType;
 
+extern boolean OutputReordered;  /* if TRUE, output the reordered problem  */
 extern long projdim;  /*dimension of orthogonal preprojection */
 extern colset projvars;   /*set of variables spanning the space of preprojection, 
      i.e. the remaining variables are to be removed*/
@@ -188,6 +189,8 @@ void DualizeA(rowrange *, colrange *, Amatrix, Bmatrix);
 void EnlargeAforInteriorFinding(rowrange *, colrange *, Amatrix);
 void WriteSubMatrixOfA(FILE *, rowrange, colrange, Amatrix, rowset, colset, InequalityType);
 void WriteAmatrix(FILE *, Amatrix, long, long, InequalityType);
+void WriteAmatrix2(FILE *f, Amatrix A, long rowmax, long colmax,
+      InequalityType ineq, rowindex OV, rowrange iteration);
 void ComputeRank(rowrange, colrange, Amatrix, rowset, rowindex, long *);
 void ComputeBInverse(rowrange, colrange, Amatrix, long, rowindex, Bmatrix InvA1, long *);
 void FindBasis(rowrange, colrange, Amatrix, HyperplaneOrderType, rowindex,rowset,colindex,
@@ -220,6 +223,7 @@ void AddNewHyperplane1(rowrange, colrange, Amatrix, rowrange, rowrange iter, row
 void AddNewHyperplane2(rowrange, colrange, Amatrix, rowrange, rowrange iter, rowindex);
 void WriteAdjacency(FILE *, rowrange, colrange, rowrange, colrange, Amatrix);
 void WriteAdjacencyDegree(FILE *, rowrange, colrange, rowrange, colrange, Amatrix, rowrange);
+void WriteRunningMode0(FILE *);
 void WriteRunningMode(FILE *);
 void WriteRunningMode2(FILE *, rowrange, colrange);
 void WriteCompletionStatus(FILE *,  rowrange, colrange, rowrange);
@@ -227,6 +231,9 @@ void WriteTimes(FILE *);
 void WriteProgramDescription(FILE *);
 void WriteSolvedProblem(FILE *, rowrange m_input, colrange n_input, 
     rowrange m_size, colrange n_size, Amatrix);
+void WriteSolvedSubProblem(FILE *, rowrange m_input, colrange n_input, 
+    rowrange m_size, colrange n_size, Amatrix, rowindex OV, 
+    rowrange iteration);
 void InitialWriting(rowrange, colrange, rowrange, colrange);
 void WriteDDResult(rowrange, colrange, rowrange, colrange, Amatrix, rowrange);
 void WriteErrorMessages(FILE *);

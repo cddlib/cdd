@@ -1,7 +1,7 @@
-1996-08-27
------------------------
-PROGRAM cdd README FILE
------------------------
+1997-12-01
+--------------------------------------
+PROGRAM cdd (version 0.61) README FILE
+--------------------------------------
 The program  cdd  is a C implementation of the Double Description 
 Method of Motzkin et al. for generating all vertices (i.e. extreme points)
 and extreme rays of a general convex polyhedron in R^d given by a system 
@@ -11,22 +11,25 @@ of linear inequalities:
 
 where  A  is an m x d real matrix and b is a real m dimensional vector.
 The program can be used for the reverse operation (i.e. convex hull
-computation) if one run cdd with "hull" option.  This means that 
-one can move back and forth between an inequality representation 
-and a generator (i.e. vertex and ray) representation of a polyhedron
-with cdd.
+computation).  This means that  one can move back and forth between 
+an inequality representation  and a generator (i.e. vertex and ray) 
+representation of a polyhedron with cdd.  Also, cdd can solve a linear
+programming problem, i.e. a problem of maximizing and minimizing 
+a linear function over P.
+
+The version 0.61 adopts the updated Polyhedra format with
+"H-representation" and "V-represetation" statements.  The linear
+programming library dplex has been updated and debugged.  The library
+has a new function dp_FindInteriorPoint to return an interior point
+of a convex polyhedron.
 
 The cdd package is in "tar"ed and "gzip"ed format with name
 cdd-***.tar.gz, where *** is the version number.  The standard
 anonymous ftp site for the package is
 
-     ftp site : ifor13.ethz.ch (129.132.154.13)
+     ftp site : ftp.ifor.math.ethz.ch
      directory: pub/fukuda/cdd
-     file name: cdd+-***.tar.gz
-
-The old ftp site: ftp.efpl.ch (128.178.139.3) directory: incoming/dma
-is no more valid and please do not use this site although
-some of the old items are still there.
+     file name: cdd-***.tar.gz
 
 In order to unpack the package in a standard unix environment, type 
    
@@ -62,7 +65,7 @@ placed in a newly created sub-directory cdd-*** :
 Before using the software, please read COPYING and
 and read the manual cddman.tex.  
 
-To compile the manual cddman.tex (in latex format) in a standard unix 
+To compile the manual cddman.tex (in latex2e format) in a standard unix 
 environment, run the following command twice: 
 
    % latex cddmax.tex
@@ -86,7 +89,7 @@ In above, gnu C compiler gcc can be replaced by the native C-compiler
 cc of your system if cc supports the modern ANSI C.
 
 There is a supplementary  C program, called domcheck,
-written by Francois Margot of EPFL, which can be used with cdd 
+written by Francois Margot, which can be used with cdd 
 to compute the orthogonal projection of a polyhedron onto
 the subspace of any subset of variables.  The program domcheck
 can be obtained from the same ftp site above. Note that
@@ -100,9 +103,9 @@ for free software development is user's appreciation.
 For more information, contact
    Komei Fukuda
    fukuda@ifor.math.ethz.ch
-   Institut fur Operations Research
-   ETH Zentrum, CH-8092 Zurich, Switzerland
-   fax +41-1-632 1025   tel +41-1-632 4023 or 4028
+   Zurich  :IFOR, ETH Zentrum, CH-8092 Zurich, Switzerland  
+   Lausanne:DMA, EPFL, Ch-1015 Lausanne, Switzerland
+   homepage: http://www.ifor.math.ethz.ch/staff/fukuda/fukuda.html
 
 // END of cdd.readme
 

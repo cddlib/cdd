@@ -1,6 +1,6 @@
 /* dplexdef.h:  Definition file for dplex.c 
    written by Komei Fukuda, fukuda@ifor.math.ethz.ch
-   Version 0.60, August 21, 1996
+   Version 0.61alpha, October 31, 1997
 */
 
 /* LP to be solved is of form
@@ -9,7 +9,7 @@
             A   x  <=  b.
 */
 
-#define dp_MMAX    5002 /* USER'S CHOICE: max row size of A plus two */
+#define dp_MMAX    20002 /* USER'S CHOICE: max row size of A plus two */
 #define dp_NMAX    51   /* USER'S CHOICE: max column size of A plus one */
 #define dp_zero      1.0e-5   /*real zero*/
 #define dp_wordlenmax  32
