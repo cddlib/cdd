@@ -1,6 +1,6 @@
 /* cdd.h: Header file for cdd.c 
    written by Komei Fukuda, fukuda@dma.epfl.ch
-   Version 0.52b, March 29, 1994 
+   Version 0.53, July 29, 1994 
 */
 
 /* cdd.c : C-Implementation of the double description method for
@@ -47,7 +47,7 @@ typedef enum {
   Combinatorial, Algebraic
 } AdjacencyTestType;
 typedef enum {
-  MaxIndex, MinIndex, MinCutoff, MaxCutoff, MixCutoff, LexMin, LexMax
+  MaxIndex, MinIndex, MinCutoff, MaxCutoff, MixCutoff, LexMin, LexMax, RandomRow
 } HyperplaneOrderType;
 typedef enum {
   Real, Rational, Integer, Unknown
@@ -122,6 +122,8 @@ extern DataFileType inputfile,ifilehead,ifiletail,
 
 extern FILE *reading, *writing, *writing_icd,*writing_adj, *writing_log;
 extern time_t starttime, endtime;
+extern unsigned int rseed;
+
 
 void SetInputFile(FILE **, boolean *);
 void SetWriteFile(FILE **, DataFileType, char, char *);

@@ -164,4 +164,12 @@ Version C0.51d (March 28, 1994) /
 Version C0.52b (March 28, 1994) /
  - The slowness problem of Version C0.52(a) is fixed.
  
+Version C0.53 (July 29, 1994) /
+ - Some imcompatibility of cdd and domcheck has been fixed.  Namely, one can
+   write any comments after each inequality data as long as it is written in
+   the same line as the last number (i.e., a_{id}, for each i) of each ith
+   inequality data.  Anything written after the last number will be ignored.  
+   Also, random ordering option is added for specifying the ordering of
+   rows (inequalities). 
+
 --- end of file: cddHISTORY ---

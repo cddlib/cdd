@@ -1,7 +1,7 @@
 % The name of this file: cddman.tex
 % written by by Komei Fukuda
 % December 14, 1993
-% Revised March 29, 1994
+% Revised October 2, 1994
 %
 \documentstyle[11pt]{article}
 \renewcommand{\baselinestretch}{1.0}
@@ -38,7 +38,9 @@
 }
 
 \vspace{20mm}
-{\Large (cdd Version 0.52b,  March 29, 1994)}
+{\Large (cdd Version 0.53,  July 29, 1994)}
+
+{\Large (Manual  Version  October 2, 1994)}
 
 \end{center}
 
@@ -57,7 +59,7 @@
    University of Tsukuba, Tokyo, Japan}
 
 \bigskip
-{\large (cdd Version 0.52b,  March 29, 1994)}
+{\large (cdd Version 0.53,  July 29, 1994)}
 
 \end{center}
 
@@ -73,10 +75,24 @@ convex polyhedron given by a system of linear inequalities:
 \]
 where $A$ is an $m \times d$ real matrix and $b$ is a real
 $m$ dimensional vector.  It is intended that the program works 
-only when the input polyhedron has at least one vertex but 
+only when the input polyhedron has at least one vertex.  But  it 
 works for polyhedra $P$ which are not full-dimensional.    
- 
-This program has been produced
+
+One useful feature of cdd is its capability
+of handling the dual (reverse)  problem without any transformation
+of data.  The dual problem is known to be the 
+{\em (convex) hull problem\/} which
+is to obtain a linear inequality representation
+of a convex polyhedron given as the Minkowski sum of 
+the convex hull of a finite set of points and the nonnegative
+hull of a finite set of points in $R^d$: 
+$P = conv(v_1,\ldots,v_n) +  nonneg(r_1,\ldots,r_s)$.
+As we see in this manual, the computation can be done
+in straightforward manner.  There is one assumption for the input
+for hull computation: the polyhedron must be full-dimensional.
+See the ^^ ^^ hull" option in Section~\ref{OPTIONS}.
+
+The program cdd has been produced
 from the pascal code pdd.p (Version 0.2)
 which was written by the author.   For the translation,
 we applied the Pascal-to-C translator p2c
@@ -103,39 +119,26 @@ efficient for highly degenerate inputs and the program rs
 tends to be efficient for nondegenerate or slightly
 degenerate problems.
 
-One interesting feature of cdd is its capability
-of handling the dual (reverse)  problem without any transformation
-of data.  The dual problem is known to be the 
-{\em (convex) hull problem\/} which
-is to obtain a linear inequality representation
-of a convex polyhedron given as the Minkowski sum of 
-the convex hull of a finite set of points and the nonnegative
-hull of a finite set of points in $R^d$: 
-$P = conv(v_1,\ldots,v_n) +  nonneg(r_1,\ldots,r_s)$.
-As we see in this manual, the computation can be done
-in straightforward manner.  There is one assumption for the input
-for hull computation: the polyhedron must be full-dimensional.
-
 Among the hardest problems that could be
-solved by cdd is a 21-dimensional hull problem given by 63 
-extreme rays. This polyhedral cone, known as the {\em complete
-cut cone on 7 points\/}, has exactly 38,780 facets and
-some of facets contain many rays, see e.g. \cite{G}. 
-It took a couple of days for an earliear version of cdd
-to compute the rays exactly on a fast workstation.
-(Note that the present version 0.51 is considerabley faster.)  
-The input file (ccc7.ine) of this polyhedra is
-included in the distribution.
+solved by cdd is a 21-dimensional hull problem given by 64 
+vertices. This polytope, known as the {\em complete
+cut polytope on 7 points\/}, has exactly 116,764 facets
+and some of facets contain many vertices. 
+It took about 205 hours (eight and half days!) for cdd
+to compute the facets exactly on a SUN SparkServer 1000.
+The input file (ccp7.ine) of this polytope is
+included in the distribution.  A considerably easier
+problem is ccc7.ine which is a variation of the problem 
+(see e.g. \cite{G}).
 
 The size of an input file hardly indicates the degree of 
 hardness of its vertex/ray enumeration.  While this program
 can handle a highly degenerate problem (prodmT5.ine) with 
 711 inequalities in  19 dimension quite easily with
-the computation time 3-4 minutes on fast workstation, 
+the computation time 1-2 minutes on a fast workstation, 
 a 8-dimensional problem (mit729-9.ine) with 729 inequalities
-can be extremely hard.  It took us about a month (for
-an older version of cdd) on
-a reasonably fast Sun 4 workstation.  The latter problem arises
+can be extremely hard.  It takes two days to compute all
+(only 4862) vertices by a fast SUN SparkServer 1000.  The latter problem arises
 from the ground state analysis of a ternary alloy model, see \cite{CGAF}.
 Both input files are included in the distribution.  
 
@@ -146,7 +149,7 @@ recommended.
 
 One serious drawback of the current cdd is that the computation
 is done with floating point arithmetic, and it does
-perform infinite precision arithmetic. In contrast, the program rs
+not perform infinite precision arithmetic. In contrast, the program rs
 supports multiple precision arithmetic with any fixed
 multiplicity.  We are now developing
 a new version of cdd, which will hopefully perform the exact
@@ -276,7 +279,8 @@ The following options are available for cdd.  These options are
 set if they appear in input file after the ^^ ^^ end" command.
 Independent options can be set simultaneously, but each option
 must be written separately in one line, and  two options
-should not be written in one line.
+should not be written in one line.  When two or more non-independent
+options are specified, the last one overrides the others.
 
 \begin{description}
 
@@ -323,7 +327,7 @@ The default is stdout\_on.
  When this option is chosen, the program will output
 to a specified file (*.ddl) some information on the computation history.
 This can be useful when the user does not know which hyperplane order
-(mincutoff, maxcutoff, mixcutoff, lexmin, lexmax, minindex)
+(mincutoff, maxcutoff, mixcutoff, lexmin, lexmax, minindex, random)
 is efficient for computation.
 
 \item[incidence, \#incidence] options\\
@@ -423,7 +427,7 @@ ucube.ext file has degree (valency) $3$, and its three neighbours are
 When the computation is to obtain the hull (inequality system),
 the adjacency is of course that of inequalities (i.e. facets).
 
-\item[mincutoff, maxcutoff, mixcutoff, lexmin, lexmax, minindex] options\\
+\item[lexmin, lexmax, minindex,mincutoff, maxcutoff, mixcutoff, random] options\\
 The double description is an incremental algorithm which
 computes the vertices/rays of a polyhedron given by some $k$ of
 original inequalities from the precomputed vertices/rays of a
@@ -440,15 +444,20 @@ lexmin, lexmax, mincutoff, maxcuoff work quite well in general.
 
 
 The default is lexmin ordering which simply order inequalities
-with respect to lexico-graphic ordering of rows of $A$.  The lexmax
+with respect to lexico-graphic ordering of rows of $(b, -A)$.  The lexmax
 is reverse of lexmin.  The mincutoff (maxcutoff) option selects an inequality which
-cuts off the minimum (maximum) number of vertices/rays of the $k-1$th polyhedron. 
+cuts off the minimum (maximum) number of vertices/rays of the $(k-1)$st polyhedron. 
 The mixcutoff option is the mixture of mincutoff and maxcutoff which selects
-an inequality which cuts off the $k-1$th polytope as unbalanced as possible.
+an inequality which cuts off the $(k-1)$st polytope as unbalanced as possible.
 The maxcutoff option might be efficient if the input contains
 many redundant inequalities (many interior points for hull computation).
-Finally, the minindex option selects the hyperplanes from the top of
+The minindex option selects the hyperplanes from the top of
 the input.
+
+The random option selects the inequalities in a random order.  This option
+must be followed by a random seed which is positive integer (less than
+65536).  For example, {\bf random 123} specifies the random option with
+the random seed 123. 
 
 \item[initbasis\_at\_bottom] option\\
 When this option is set, the program tries to select
@@ -644,7 +653,10 @@ ANSI C, and thus it should run on
 personal computers without any changes if one uses a compliler supporting
 ANSI standard. We have verified that it can be compiled by THINK C without
 any problems if ANSI library is added to the project together with
-cdd.c, cddarith.c and setoper.c.  We have not yet tried to compile it with TURBO C.
+cdd.c, cddarith.c and setoper.c.  We could also compile it with some
+old version of TURBO C.  Due to limited memory capacities of
+these compilers, it is necessary to reduce the constants MMAX and NMAX
+to, say 2001 and 51.
 \end{itemize}
 
 \section{Bugs}  \label{BUGS}

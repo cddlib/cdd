@@ -1,4 +1,4 @@
-1994-03-29
+1994-10-02
 -----------------------
 PROGRAM cdd README FILE
 -----------------------
@@ -11,7 +11,10 @@ of linear inequalities:
 
 where  A  is an m x d real matrix and b is a real m dimensional vector.
 The program can be used for the reverse operation (i.e. convex hull
-computation), etc. 
+computation) if one run cdd with "hull" option.  This means that 
+one can move back and forth between an inequality representation 
+and a generator (i.e. vertex and ray) representation of a polyhedron
+with cdd.
 
 The cdd package is in "tar"ed and "compress"ed format with name
 cdd-***.tar.Z, where *** is the version number.  The standard
@@ -24,7 +27,7 @@ anonymous ftp site for the package is
 In order to unpack the package in a standard unix environment, type 
    
      % uncompress cdd-***.tar.Z
-     % tar xvf cdd-***.tar.Z
+     % tar xvf cdd-***.tar
 
 where *** must be replaced by the appropriate version number, and
 % is a unix prompt. 

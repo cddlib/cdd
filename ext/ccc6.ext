@@ -1,13 +1,13 @@
-* cdd: Double Description Method C-Code:Version C0.51 (February 12, 1994)
+* cdd: Double Description Method C-Code:Version C0.53 (July 29, 1994)
 * Copyright (C) 1994, Komei Fukuda, fukuda@dma.epfl.ch
 *Input File:ccc6.ine   (  31  x   16)
 *HyperplaneOrder: LexMin
 *Degeneracy preknowledge for computation: None (possible degeneracy)
 *Hull computation is chosen.
-*Computation starts     at Mon Feb 14 16:52:48 1994
-*            terminates at Mon Feb 14 16:52:50 1994
-*Total processor time = 2 seconds
-*                     = 0 hour 0 min 2 sec
+*Computation starts     at Tue Aug  2 20:04:52 1994
+*            terminates at Tue Aug  2 20:05:03 1994
+*Total processor time = 11 seconds
+*                     = 0 hour 0 min 11 sec
 *Since hull computation is chosen, the output is a minimal inequality system
 *FINAL RESULT:
 *Number of Facets =     210

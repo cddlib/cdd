@@ -1,6 +1,6 @@
 /* cddarith.c:  Floating Point Arithmetic Procedures for cdd.c
    written by Komei Fukuda, fukuda@dma.epfl.ch
-   Version 0.52b, March 29, 1994 
+   Version 0.53, July 29, 1994 
 */
 
 /* cdd.c : C-Implementation of the double description method for
@@ -97,6 +97,12 @@ void ProcessCommandLine(char *line)
     HyperplaneOrder = LexMax;
     return;
   }
+  if (strncmp(line, "random", 6)==0) {
+    HyperplaneOrder = RandomRow;
+    fscanf(reading,"%d", &rseed);
+    if (rseed <= 0) rseed = 1;
+    return;
+  }
   if (strncmp(line, "initbasis_at_bottom", 19)==0) {
     InitBasisAtBottom = TRUE;
     return;
@@ -173,7 +179,7 @@ void AmatrixInput(boolean *successful)
   double value;
   long value1,value2;
   boolean found=FALSE,decided=FALSE, fileopened;
-  char command[wordlenmax], numbtype[wordlenmax], stemp[wordlenmax];
+  char command[wordlenmax], numbtype[wordlenmax], stemp[wordlenmax], line[linelenmax];
 
   *successful = FALSE;
 
@@ -259,8 +265,19 @@ void AmatrixInput(boolean *successful)
 	  }
 	  if (debug) printf("a(%3ld,%5ld) = %10.4f\n",i,j,value);
     }  /*of j*/
+    fgets(line,linelenmax,reading);
+    if (debug) printf("comments to be skipped: %s\n",line);
     if (debug) putchar('\n');
   }  /*of i*/
+  if (fscanf(reading,"%s",command)==EOF) {
+   	 Error=ImproperInputFormat;
+  	 goto _L99;
+  }
+  else if (strncmp(command, "end", 3)!=0) {
+     if (debug) printf("'end' missing or illegal extra data: %s\n",command);
+   	 Error=ImproperInputFormat;
+  	 goto _L99;
+  }
   
   switch (Conversion) {
   case IneToExt:

@@ -1,6 +1,6 @@
 /* cdddef.h:  Definition file for cdd.c 
    written by Komei Fukuda, fukuda@dma.epfl.ch
-   Version 0.52b,  March 29, 1994
+   Version 0.53,  July 29, 1994
 */
 
 /* cdd.c : C-Implementation of the double description method for
@@ -17,9 +17,9 @@
 #define colsetsize NMAX   /* The size of the row index set */
 
 #define datawidth       10
-#define filenamelen     255 
+#define filenamelen     256 
 #define wordlenmax      128 
-#define linelenmax      255
+#define linelenmax      256
 
 #define FALSE 0
 #define TRUE 1

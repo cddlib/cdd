@@ -1,7 +1,8 @@
 file name: ccp7.ine
 Complete Cut Polytope on 7 vertices
-The number of facets is expected to be 116,764! 
-Needs very fast computer with lots of memory. Never computed. 
+The number of facets is 116,764. 
+Needs very fast computer with lots of memory.
+It took a couple of days to compute with SparkServer 1000. 
 begin
   64  22   integer
 1   0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0

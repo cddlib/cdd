@@ -1,5 +1,5 @@
 #define COPYRIGHT   "Copyright (C) 1994, Komei Fukuda, fukuda@dma.epfl.ch"
-#define DDVERSION   "Version C0.52b (March 29, 1994)"
+#define DDVERSION   "Version C0.53 (July 29, 1994)"
 
 /*  This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
    the manual cddman.tex for details.
 */
 
-/* The first version C0.21 was created , November 10, 1993 
+/* The first version C0.21 was created on November 10,1993 
    with Dave Gillespie's p2c translator 
    from the Pascal program pdd.p written by Komei Fukuda. 
 */
@@ -36,6 +36,7 @@
 #include <time.h>
 #include <math.h>
 #include <string.h>
+
 /* #include <profile.h>   THINK C PROFILER */
 /* #include <console.h>   THINK C PROFILER */
 
@@ -82,6 +83,7 @@ DataFileType inputfile,ifilehead,ifiletail,
   outputfile,projfile,icdfile,adjfile,logfile;
 FILE *reading, *writing, *writing_proj, *writing_icd, *writing_adj,*writing_log;
 time_t starttime, endtime;
+unsigned int rseed=1;  /* random seed for random row permutation */
 
 void DefaultOptionSetup(void)
 {
@@ -308,8 +310,6 @@ void WriteIncidence(FILE *f, RayRecord *RR)
   set_free(cset);
 }
 
-
-
 void CheckAdjacency1(RayRecord **RP1, RayRecord **RP2,
 			    boolean *adjacent)
 {
@@ -365,8 +365,6 @@ void CheckAdjacency2(RayRecord **RP1, RayRecord **RP2,
   }
 }
 
-
-
 void Eliminate(RayRecord **Ptr)
 {
   /*eliminate the record pointed by Ptr^.Next*/
@@ -409,7 +407,6 @@ void SelectNextHyperplane0(long *excluded, rowrange *hnext)
     *hnext = 0;
 }
 
-
 void SelectNextHyperplane1(long *excluded, rowrange *hnext)
 {
   /*Natural way to choose the next hyperplane.  Simply the least index*/
@@ -429,7 +426,6 @@ void SelectNextHyperplane1(long *excluded, rowrange *hnext)
   else 
     *hnext=0;
 }
-
 
 void SelectNextHyperplane2(long *excluded, rowrange *hnext)
 {
@@ -454,7 +450,6 @@ void SelectNextHyperplane2(long *excluded, rowrange *hnext)
   }
 }
 
-
 void SelectNextHyperplane3(long *excluded, rowrange *hnext)
 {
   /*Choose the next hyperplane with maximum infeasibility*/
@@ -477,7 +472,6 @@ void SelectNextHyperplane3(long *excluded, rowrange *hnext)
 	    infmax, fi);
   }
 }
-
 
 void SelectNextHyperplane4(long *excluded, rowrange *hnext)
 {
@@ -513,8 +507,6 @@ void SelectNextHyperplane4(long *excluded, rowrange *hnext)
 	    infi, fi);
   }
 }
-
-
 
 void SelectNextHyperplane5(long *excluded, rowrange *hnext)
 {
@@ -600,57 +592,25 @@ void QuickSort(rowindex OV, long p, long r)
   }
 }
 
-void ComputeRowOrderVector(rowindex OV, HyperplaneOrderType ho)
+void RandomPermutation(rowindex OV, long t, unsigned int seed)
 {
-  long i,itemp;
-  boolean exchanged=TRUE;
-  
-  OV[0]=0;
-  switch (ho){
-  case MaxIndex:
-    for(i=1; i<=mm; i++) OV[i]=mm-i+1;
-    break;
+  long k,j,ovj;
+  double u,xk,rmax=RAND_MAX;
+  time_t ctime;
 
-  case MinIndex: case MinCutoff:  case MixCutoff:  case MaxCutoff:
-    for(i=1; i<=mm; i++) OV[i]=i;
-    break;
-
-  case LexMin:
-    for(i=1; i<=mm; i++) OV[i]=i;
-    while (exchanged){
-      exchanged=FALSE;
-      for (i=1;i<=mm-1; i++){
-        if (LexLarger(AA[OV[i]-1], AA[OV[i+1]-1])){
-          if (debug) printf("LexMin Order: %ld row and %ld row exchanged\n",OV[i],OV[i+1]);
-          itemp=OV[i];
-          OV[i]=OV[i+1];
-          OV[i+1]=itemp;
-          exchanged=TRUE;
-        }
-      }
-    }
-    break;
-
-  case LexMax:
-    for(i=1; i<=mm; i++) OV[i]=i;
-    while (exchanged){
-      exchanged=FALSE;
-      for (i=1;i<=mm-1; i++){
-        if (LexSmaller(AA[OV[i]-1], AA[OV[i+1]-1])){
-          if (debug) printf("LexMax Order: %ld row and %ld row exchanged\n",OV[i],OV[i+1]);
-          itemp=OV[i];
-          OV[i]=OV[i+1]; 
-          OV[i+1]=itemp;
-          exchanged=TRUE;
-        }
-      }
-    }
-    break;
+  srand(seed);
+  for (j=t; j>1 ; j--) {
+    u=rand() / rmax;
+    xk=j*u +1;
+    k=xk;
+    ovj=OV[j];
+    OV[j]=OV[k];
+    OV[k]=ovj;
+    if (debug) printf("row %ld is exchanged with %ld\n",j,k); 
   }
 }
 
-
-void ComputeRowOrderVector2(rowindex OV, HyperplaneOrderType ho)
+void ComputeRowOrderVector(rowindex OV, HyperplaneOrderType ho)
 {
   long i,itemp;
   boolean exchanged=TRUE;
@@ -678,6 +638,12 @@ void ComputeRowOrderVector2(rowindex OV, HyperplaneOrderType ho)
       OV[i]=OV[mm-i+1];
       OV[mm-i+1]=itemp;
     }
+    break;
+
+  case RandomRow:
+    for(i=1; i<=mm; i++) OV[i]=i;
+    if (rseed<=0) rseed=1;
+    RandomPermutation(OV, mm, rseed);
     break;
   }
 }
@@ -744,7 +710,7 @@ void SelectNextHyperplane(HyperplaneOrderType ho,
   if (*RefreshOrderVector||OrderVector==NULL){
     if (OrderVector!=NULL) free(OrderVector);
     OrderVector=(long *)calloc(mm+1, sizeof *OrderVector);
-    ComputeRowOrderVector2(OrderVector, ho);
+    ComputeRowOrderVector(OrderVector, ho);
     *RefreshOrderVector=FALSE;
   }  
   switch (ho) {
@@ -806,6 +772,10 @@ void WriteRunningMode(FILE *f)
 
     case LexMax:
       fprintf(f, "*HyperplaneOrder: LexMax\n");
+      break;
+
+    case RandomRow:
+      fprintf(f, "*HyperplaneOrder: Random,  Seed = %d\n",rseed);
       break;
     }
     if (NondegAssumed) {
@@ -1148,7 +1118,7 @@ void DDInit(void)
   set_initialize(&Face, mm);   /* used in CheckAdjacency  */
   set_initialize(&Face1, mm);  /* used in CheckAdjacency  */
   OrderVector=(long *)calloc(mm+1, sizeof *OrderVector);
-  ComputeRowOrderVector2(OrderVector, HyperplaneOrder);
+  ComputeRowOrderVector(OrderVector, HyperplaneOrder);
   RecomputeRowOrder=FALSE;
   InitializeBmatrix(InitialRays);
   for (i = 1; i <= mm; i++){
@@ -1504,7 +1474,7 @@ void main(int argc, char *argv[])
       PreProjection();
       break;
 
-   case InteriorFind:      /* Interior point search is chosen */
+    case InteriorFind:      /* Interior point search is chosen */
       InteriorFindMain();
       break;
   
